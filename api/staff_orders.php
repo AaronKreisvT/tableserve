@@ -25,6 +25,15 @@ if (($_GET['login'] ?? '') === '1') {
 }
 if (($_COOKIE['staff_key'] ?? '') !== STAFF_KEY) { http_response_code(401); echo json_encode(['error'=>'unauthorized']); exit; }
 
+// ... nach erfolgreicher Key-Prüfung:
+session_regenerate_id(true);
+$_SESSION['staff_authenticated'] = true;
+http_response_code(200);
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
+echo json_encode(['ok'=>true]);
+exit;
+
 $orders = csv_read_assoc(CSV_ORDERS);
 $orders = array_values(array_filter($orders, fn($o)=> in_array($o['status'], ['open','in_prep'])));
 usort($orders, fn($a,$b)=>strcmp($a['created_at'],$b['created_at']));
