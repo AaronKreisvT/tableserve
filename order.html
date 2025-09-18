@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TableServe – Start</title>
+  <title>TableServe – Bestellung</title>
 
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" type="image/png" href="/favicon.png?v=7">
@@ -14,24 +14,21 @@
   <link rel="stylesheet" href="/assets/css/tableserve.css">
 
   <script src="/assets/js/include.js" defer></script>
-  <script src="/assets/js/tableserve-start.js" defer></script>
+  <script src="/assets/js/tableserve-order.js" defer></script>
 </head>
-<body data-page="index">
+<body data-page="order">
   <div data-include="/partials/header-tableserve.html"></div>
 
   <main class="container">
-    <h1>Tisch auswählen</h1>
-    <p class="muted">Gib deinen Tischcode ein (steht am QR-Code am Tisch).</p>
+    <h1>Bestellen</h1>
+    <p id="tableInfo" class="muted"></p>
 
-    <div class="card" style="max-width:520px">
-      <form id="startForm" class="row" autocomplete="on">
-        <input id="code" name="code" placeholder="z. B. AB12CD34" inputmode="text"
-               pattern="[A-Za-z0-9_-]{3,64}" minlength="3" maxlength="64"
-               style="flex:1" required>
-        <button type="submit">Weiter</button>
-      </form>
-      <p id="err" class="muted" role="status" aria-live="polite" style="margin-top:8px"></p>
-    </div>
+    <div id="menu"></div>
+
+    <h3>Warenkorb</h3>
+    <div id="cart"><p class="muted">Noch leer.</p></div>
+    <button id="send" disabled>Bestellung abschicken</button>
+    <p id="msg" class="muted"></p>
   </main>
 
   <div data-include="/partials/footer-tableserve.html"></div>

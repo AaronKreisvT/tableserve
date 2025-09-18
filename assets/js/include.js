@@ -53,10 +53,10 @@
     });
   };
 
+  // in include.js
   const markActiveTab = () => {
     const page = document.body?.dataset?.page;
-    if (!page) return;
-    const map = { index: '/', staff: '/staff.html' };
+    const map = { index: '/', order: '/', staff: '/staff.html' }; // <-- order ergänzt
     const href = map[page];
     if (!href) return;
     const link = document.querySelector(`.tabs a[href="${href}"], .tabs a[data-active="${page}"]`);

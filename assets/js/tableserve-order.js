@@ -1,10 +1,9 @@
 // Seitenlogik: Menü laden, Warenkorb, Bestellung senden
 document.addEventListener('DOMContentLoaded', () => {
-  // aktiven Tab markieren (fallback – include.js kann das auch)
+  // aktiven Tab markieren (Bestellen zeigt auf Startseite '/')
   const active = document.querySelector('.tabs a[href="/"]') || document.querySelector('.tabs a[data-active="index"]');
   if (active) active.classList.add('active');
 
-  // Jahr im Footer (fallback – footer-Partial kann es auch setzen)
   const y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
 
   const params = new URLSearchParams(location.search);
