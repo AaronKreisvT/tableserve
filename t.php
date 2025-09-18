@@ -23,6 +23,9 @@ $menu = array_values(array_filter(csv_read_assoc(CSV_MENU), fn($m) => ($m['activ
     .muted{opacity:.7}.badge{background:#eee;border-radius:8px;padding:2px 8px}
     button,input,textarea{padding:8px}
   </style>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+  <meta name="theme-color" content="#ffffff">
 </head>
 <body data-page="tableserve">
   <!-- Gemeinsamer Header -->

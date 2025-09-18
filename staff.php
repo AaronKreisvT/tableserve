@@ -15,6 +15,9 @@
     button{padding:8px}
     .muted{opacity:.7}.small{font-size:.85em}
   </style>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+  <meta name="theme-color" content="#ffffff">
 </head>
 <body data-page="tresen">
   <!-- Gemeinsamer Header -->
