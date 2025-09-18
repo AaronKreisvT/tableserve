@@ -66,7 +66,6 @@ $menu = array_values(array_filter(csv_read_assoc(CSV_MENU), fn($m) => ($m['activ
 
   <!-- Gemeinsamer Footer -->
   <?php include __DIR__ . '/partials/footer-tableserve.html'; ?>
-  <script src="/assets/js/include.js" defer></script>
   <script>
     const tableCode = <?= json_encode($tbl['code'], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) ?>;
     const cart = {};
