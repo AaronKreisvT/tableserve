@@ -1,0 +1,274 @@
+/* ===========================
+   COLOR THEMES
+=========================== */
+
+/* Default (System Light) */
+:root {
+  /* leicht getöntes Seiten-BG statt reinweiß */
+  --bg: #f4f6fb;      /* zartes Off-White/Blue-Gray */
+  --panel: #ffffff;   /* Karten/Header bleiben weiß für klaren Kontrast */
+  --text: #0d1b2a;
+  --muted: #4b5a6b;
+  --accent: #2d6cf6;
+  --radius: 16px;
+}
+
+/* Default (System Dark preference) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1624;
+    --panel: #1a2437;
+    --text: #e8eef8;
+    --muted: #b8c4d9;
+    --accent: #3f8cff;
+  }
+}
+
+/* User override: force Light */
+:root[data-theme="light"] {
+  --bg: #f7f9fc;
+  --panel: #ffffff;
+  --text: #0d1b2a;
+  --muted: #4b5a6b;
+  --accent: #2d6cf6;
+}
+
+/* User override: force Dark */
+:root[data-theme="dark"] {
+  --bg: #0e1624;
+  --panel: #1a2437;
+  --text: #e8eef8;
+  --muted: #b8c4d9;
+  --accent: #3f8cff;
+}
+
+/* ===========================
+   BASE STRUCTURE
+=========================== */
+
+body {
+  margin: 0;
+  font: 16px/1.6 system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.nav {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--panel);
+}
+
+.nav .brand {
+  font-weight: 700;
+  margin-right: auto;
+}
+
+.tabs a {
+  color: var(--text);
+  text-decoration: none;
+  padding: .4rem .8rem;
+  border-radius: 8px;
+}
+
+.tabs a.active {
+  background: var(--accent);
+}
+
+.container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+footer {
+  text-align: center;
+  margin: 3rem 0 2rem;
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  background: var(--panel);
+  padding: 1rem;
+  border-radius: var(--radius);
+}
+
+.pdf-actions { 
+  display:flex; 
+  gap:.6rem; 
+  margin:.6rem 0 1rem; 
+}
+
+.btn { 
+  display:inline-block; 
+  padding:.45rem .8rem; 
+  border-radius:8px; 
+  background:var(--panel); 
+}
+
+.btn:hover { 
+  text-decoration:none; 
+}
+
+.pdf-viewer {
+  border:1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  border-radius:12px; 
+  overflow:hidden; 
+  background:var(--panel);
+}
+
+/* Höhe: passt die Zahl an deine Header/Footer an */
+.pdf-frame { 
+  width:100%; 
+  height: 80vh; 
+  border:0; 
+}
+
+/* ===========================
+   LINK STYLE
+=========================== */
+
+a {
+  color: color-mix(in srgb, var(--text) 85%, var(--accent) 15%);
+  text-decoration: none;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+a:visited {
+  color: color-mix(in srgb, var(--text) 85%, var(--accent) 15%);
+}
+
+a:hover,
+a:focus {
+  text-decoration: underline;
+  color: color-mix(in srgb, var(--text) 70%, var(--accent) 30%);
+}
+
+/* ===========================
+   THEME TOGGLE BUTTON
+=========================== */
+
+.icon-btn {
+  margin-left: .5rem;
+  padding: .35rem .6rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.icon-btn:hover { 
+  filter: brightness(1.02); 
+}
+
+/* Header visuell vom Body trennen */
+header {
+  position: sticky;           /* optional: am Seitenanfang kleben */
+  top: 0;
+  z-index: 50;
+  background: var(--panel);   /* weißer Header über leicht getöntem Body */
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  box-shadow: 0 2px 12px rgba(0,0,0,.06); /* ganz dezente Tiefe */
+}
+
+/* vorhandene .nav bleibt – hier nur minimal veredeln */
+.nav {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: transparent; /* Panel-Farbe kommt jetzt vom header */
+}
+
+.card {
+  background: var(--panel);
+  padding: 1rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  box-shadow: 0 6px 20px rgba(10, 31, 68, .06); /* sehr dezent */
+}
+
+/* Sanfte Theme-Transitions (nur wenn Klasse .theme-anim aktiv ist) */
+@media (prefers-reduced-motion: no-preference) {
+  :root.theme-anim body,
+  :root.theme-anim header,
+  :root.theme-anim .nav,
+  :root.theme-anim .tabs a,
+  :root.theme-anim .card,
+  :root.theme-anim footer,
+  :root.theme-anim .btn,
+  :root.theme-anim .pdf-viewer,
+  :root.theme-anim .grid,
+  :root.theme-anim .container {
+    transition:
+      background-color .25s ease,
+      color .25s ease,
+      border-color .25s ease,
+      box-shadow .25s ease,
+      outline-color .25s ease;
+  }
+}
+
+/* iFrames & PDF nicht animieren (vermeidet „flash“) */
+.pdf-frame { transition: none !important; }
+
+.contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 2rem 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.contact-list li {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  background: var(--panel);
+  padding: .6rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.contact-list a {
+  font-weight: 500;
+  color: color-mix(in srgb, var(--text) 85%, var(--accent) 15%);
+}
+
+.contact-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+/* Kacheln vollständig klickbar & zugänglich */
+.project-card {
+  display: block;
+  color: inherit;                 /* Textfarbe wie normaler Text */
+  text-decoration: none;          /* keine Unterstreichung */
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  transition: transform .12s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.project-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.project-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* In Karten die Abstände sauber halten */
+.project-card h3 { margin: 0 0 .4rem; }
+.project-card p  { margin: 0; }
