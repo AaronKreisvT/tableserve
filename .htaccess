@@ -1,0 +1,28 @@
+# 1) Negotiation aus (verhindert "Raten" wie favicon -> PHP)
+Options -MultiViews
+
+# 2) Statische Dateien NIE durch PHP-Handler/Rewrites jagen
+<FilesMatch "\.(?:css|js|png|ico|svg|jpg|jpeg|gif|webp|woff2?|ttf|eot)$">
+  SetHandler None
+</FilesMatch>
+
+# 3) MIME-Typen explizit setzen (damit 'nosniff' kein Problem ist)
+AddType text/css               .css
+AddType application/javascript .js
+AddType image/png              .png
+AddType image/x-icon           .ico
+AddType image/svg+xml          .svg
+
+# 4) Rewrites: echte Dateien/Ordner immer direkt ausliefern
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  # (deine weiteren Regeln erst NACH diesem Block)
+</IfModule>
+
+# (Optional, schadet nicht)
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
