@@ -63,3 +63,36 @@ function next_order_id() {
 function sanitize_text($s) {
     return trim(preg_replace('/\s+/', ' ', (string)$s));
 }
+// erzeugt/liest pro Tisch eine Sequenz: data/seq/orders_<code>.seq
+function next_order_id_for_table($table_code) {
+    $seqDir = DATA_DIR . '/seq';
+    if (!is_dir($seqDir)) { mkdir($seqDir, 0775, true); }
+    $seqFile = $seqDir . '/orders_' . preg_replace('/[^A-Za-z0-9_-]/','',$table_code) . '.seq';
+
+    $fh = fopen($seqFile, 'c+');          // anlegen, wenn fehlt
+    if (!$fh) return $table_code . '-' . time(); // Fallback
+    flock($fh, LOCK_EX);                  // **per Tisch** exklusiv
+    $raw = stream_get_contents($fh);
+    $n   = intval(trim($raw)) ?: 0;
+    $n++;
+    ftruncate($fh, 0);
+    rewind($fh);
+    fwrite($fh, (string)$n);
+    fflush($fh);
+    flock($fh, LOCK_UN);
+    fclose($fh);
+
+    return $table_code . '-' . $n;
+}
+
+// Optional: allgemeiner Mutex, falls du Kopf+Positionen zusammen schützen willst
+function ts_lock_table($table_code) {
+    $lockFile = DATA_DIR . '/lock_' . preg_replace('/[^A-Za-z0-9_-]/','',$table_code) . '.lock';
+    $fh = fopen($lockFile, 'c');
+    if (!$fh) return false;
+    flock($fh, LOCK_EX);
+    return $fh;
+}
+function ts_unlock($fh) {
+    if ($fh) { flock($fh, LOCK_UN); fclose($fh); }
+}
