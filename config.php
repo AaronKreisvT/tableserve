@@ -1,6 +1,7 @@
 <?php
 // Einfaches "Secret" fürs Tresenboard
 define('STAFF_KEY', '12345678'); // ändere das!
+define('ADMIN_KEY', '12345678'); // das auch!
 date_default_timezone_set('Europe/Paris');
 
 // Pfade

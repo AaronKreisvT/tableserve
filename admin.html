@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TableServe – Admin</title>
+
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="/favicon.png?v=8">
+  <link rel="apple-touch-icon" href="/favicon.png?v=8">
+  <meta name="theme-color" content="#111111">
+
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <link rel="stylesheet" href="/assets/css/tableserve.css">
+
+  <script src="/assets/js/include.js" defer></script>
+  <script src="/assets/js/admin.js" defer></script>
+
+  <style>
+    /* ein wenig engere Admin-Optik */
+    .admin-wrap{max-width:1100px;margin:20px auto;padding:0 16px}
+    form.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    table{width:100%;border-collapse:collapse;margin:10px 0}
+    th,td{border:1px solid var(--border);padding:.5em .6em}
+    thead th{background: color-mix(in srgb, var(--border) 55%, transparent)}
+    .right{text-align:right}
+    .msg{margin:10px 0}
+    .hidden{display:none}
+  </style>
+</head>
+<body data-page="admin">
+  <div data-include="/partials/header-tableserve.html"></div>
+
+  <main class="admin-wrap">
+    <h1>Admin</h1>
+
+    <!-- Login-Card -->
+    <div class="card" id="loginCard" style="margin-bottom:12px">
+      <form id="adminLoginForm" class="inline" action="#" method="post" autocomplete="off" novalidate>
+        <input id="adminPass" name="password" type="password" placeholder="Admin-Passwort" required style="min-width:260px">
+        <button type="submit">Einloggen</button>
+      </form>
+      <div id="loginMsg" class="muted msg"></div>
+    </div>
+
+    <!-- Admin-Panels (erst nach Login sichtbar) -->
+    <div id="adminPanels" class="hidden">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px">
+        <h2 style="margin:0">Tische</h2>
+        <button id="adminLogout">Logout</button>
+      </div>
+
+      <!-- Tische: Anlegen -->
+      <form id="tableCreateForm" class="inline" style="margin-bottom:8px">
+        <input id="newTableName" name="name" placeholder="Neuer Tischnamen (z. B. Tisch 7)" required style="flex:1;min-width:260px">
+        <button type="submit">Tisch anlegen</button>
+      </form>
+
+      <!-- Tische: Liste -->
+      <div id="tablesList"><p class="muted">Lade Tische…</p></div>
+
+      <hr style="margin:20px 0">
+
+      <h2>Menü</h2>
+
+      <!-- Menü: Anlegen -->
+      <form id="menuCreateForm" class="inline" style="gap:8px;margin-bottom:8px">
+        <input type="text" id="menuNewName" placeholder="Name" required>
+        <input type="text" id="menuNewPrice" placeholder="Preis (€ z. B. 2,50)" required style="width:140px">
+        <input type="text" id="menuNewCat" placeholder="Kategorie (z. B. Getränke)" required>
+        <label><input type="checkbox" id="menuNewActive" checked> aktiv</label>
+        <button type="submit">Hinzufügen</button>
+      </form>
+
+      <!-- Menü: Liste -->
+      <div id="menuList"><p class="muted">Lade Menü…</p></div>
+    </div>
+  </main>
+
+  <div data-include="/partials/footer-tableserve.html"></div>
+</body>
+</html>
