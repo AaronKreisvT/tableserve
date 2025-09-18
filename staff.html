@@ -11,23 +11,14 @@
   <link rel="apple-touch-icon" href="/favicon.png?v=6">
   <meta name="theme-color" content="#111111">
 
-  <!-- Styles -->
+  <!-- Styles -->  
+  <link rel="stylesheet" href="/assets/css/styles.css">
   <link rel="stylesheet" href="/assets/css/tableserve.css">
 
   <!-- Partials-Loader + Seitenskript -->
   <script src="/assets/js/include.js" defer></script>
   <script src="/assets/js/tableserve-staff.js" defer></script>
 
-  <!-- Dark Mode vor First Paint -->
-  <script>
-    (function(){
-      try {
-        const pref = localStorage.getItem('ts-theme');
-        const dark = pref ? (pref==='dark') : window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (dark) document.documentElement.classList.add('dark');
-      } catch(e){}
-    })();
-  </script>
 </head>
 <body data-page="staff">
 
