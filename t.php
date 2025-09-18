@@ -3,9 +3,9 @@
 // zeigt dir, welches File du wirklich gerade ausgeliefert bekommst:
 echo "<!-- FILE: " . __FILE__ . " -->\n";
 echo "<!-- DIR: " . __DIR__  . " -->\n";
-?>
+//?>
 
-<?php
+//<?php
 require_once __DIR__ . '/functions.php';
 $code = $_GET['code'] ?? '';
 $tables = csv_read_assoc(CSV_TABLES);
