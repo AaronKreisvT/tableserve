@@ -1,4 +1,4 @@
-// Seitenlogik: Menü laden, Warenkorb, Bestellung senden
+// Bestellseite: Code validieren -> Menü laden -> Warenkorb/Bestellen
 document.addEventListener('DOMContentLoaded', () => {
   // aktiven Tab markieren (Bestellen zeigt auf Startseite '/')
   const active = document.querySelector('.tabs a[href="/"]') || document.querySelector('.tabs a[data-active="index"]');
@@ -6,16 +6,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
 
+  const main = document.querySelector('main.container');
   const params = new URLSearchParams(location.search);
-  const tableCode = params.get('code') || '';
+  const tableCode = (params.get('code') || '').trim();
+
   const tableInfo = document.getElementById('tableInfo');
-  if (tableInfo) tableInfo.textContent = tableCode ? ("Tisch-Code: " + tableCode) : "Kein Tisch-Code in der URL (?code=...)";
+  if (tableInfo) tableInfo.textContent = tableCode ? ("Tisch-Code: " + tableCode) : "";
 
   const state = { items: [], cart: {} };
   const euro = (c) => (c/100).toFixed(2).replace('.', ',') + ' €';
 
+  // ---------- Fehleranzeige ----------
+  function showInvalid(reason) {
+    if (!main) return;
+    main.innerHTML = `
+      <h1>Ungültiger Tischcode</h1>
+      <p class="muted">${reason || "Der eingegebene Code ist nicht gültig."}</p>
+      <p>Bitte scanne den <strong>QR-Code am Tisch</strong> oder gib den Code auf der Startseite ein.</p>
+      <p><a href="/">Zur Startseite</a></p>
+    `;
+  }
+
+  // ---------- Code prüfen (Server) ----------
+  async function validateTableCode(code) {
+    try {
+      const r = await fetch('/api/check_table.php', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ code })
+      });
+      if (!r.ok) return false;
+      const data = await r.json();
+      return !!(data && data.ok);
+    } catch(e){
+      return false;
+    }
+  }
+
+  // ---------- Menü laden ----------
   async function loadMenu(){
-    // 1) JSON-API (optional, falls vorhanden)
+    // 1) JSON-API (optional)
     try {
       const r = await fetch('/api/menu.php', { headers:{ 'Accept':'application/json' } });
       if (r.ok) {
@@ -71,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!menu) return;
     menu.innerHTML = html;
 
-    // Delegation für Add-Buttons
+    // Buttons binden
     menu.querySelectorAll('button[data-add]').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = parseInt(btn.dataset.add,10);
@@ -105,15 +135,14 @@ document.addEventListener('DOMContentLoaded', () => {
       b.addEventListener('click', () => { delete state.cart[b.dataset.del]; renderCart(); });
     });
 
-    document.getElementById('send').disabled = false;
+    const send = document.getElementById('send');
+    if (send) send.disabled = false;
   }
 
   const sendBtn = document.getElementById('send');
   if (sendBtn) {
     sendBtn.addEventListener('click', async () => {
       const msg = document.getElementById('msg');
-      if(!tableCode){ if(msg) msg.textContent = "Fehlender Tisch-Code (?code=...)"; return; }
-
       const items = Object.entries(state.cart).map(([key, qty])=>{
         const [id, note] = key.split("|");
         return { item_id: parseInt(id,10), qty, notes: note || null };
@@ -134,5 +163,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  loadMenu();
+  // ---- Ablauf starten ----
+  (async () => {
+    if (!tableCode) { showInvalid("Es wurde kein Tischcode übermittelt."); return; }
+    const ok = await validateTableCode(tableCode);
+    if (!ok) { showInvalid("Der eingegebene Code ist falsch. Bitte scanne den QR-Code am Tisch oder gib den Code auf der Startseite ein."); return; }
+    // gültig -> Menü laden
+    loadMenu();
+  })();
 });
