@@ -1,11 +1,4 @@
 <?php
-// nur temporär
-// zeigt dir, welches File du wirklich gerade ausgeliefert bekommst:
-echo "<!-- FILE: " . __FILE__ . " -->\n";
-echo "<!-- DIR: " . __DIR__  . " -->\n";
-//?>
-
-//<?php
 require_once __DIR__ . '/functions.php';
 $code = $_GET['code'] ?? '';
 $tables = csv_read_assoc(CSV_TABLES);
@@ -36,7 +29,7 @@ $menu = array_values(array_filter(csv_read_assoc(CSV_MENU), fn($m) => ($m['activ
 </head>
 <body data-page="tableserve">
   <!-- Gemeinsamer Header -->
-  <?php include __DIR__ . '/partials/header-tableserve.html'; ?>
+  <?php include __DIR__ . 'partials/header-tableserve.html'; ?>
   <main class="container">
     <h1><?= htmlspecialchars($tbl['name']) ?></h1>
     <p class="muted">Tisch-Code: <?= htmlspecialchars($tbl['code']) ?></p>
@@ -71,7 +64,7 @@ $menu = array_values(array_filter(csv_read_assoc(CSV_MENU), fn($m) => ($m['activ
   </main>
 
   <!-- Gemeinsamer Footer -->
-  <?php include __DIR__ . '/partials/footer-tableserve.html'; ?>
+  <?php include __DIR__ . 'partials/footer-tableserve.html'; ?>
   <script src="/assets/js/include.js" defer></script>
   <script>
     const tableCode = <?= json_encode($tbl['code'], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) ?>;
