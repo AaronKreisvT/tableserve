@@ -6,6 +6,18 @@
 require_once __DIR__ . '/../functions.php';
 header('Content-Type: application/json; charset=utf-8');
 
+// Einheitlicher Name & sichere Cookie-Parameter
+session_name('TSID');
+session_set_cookie_params([
+  'lifetime' => 0,
+  'path'     => '/',
+  'domain'   => '',        // leer = aktuelle Host-Domain
+  'secure'   => true,      // HTTPS only
+  'httponly' => true,
+  'samesite' => 'Lax',     // sicher für Same-Origin-Fetch
+]);
+session_start();
+
 /* ----------------------------------------------------------------------
    Fallback-Helfer (werden nur definiert, falls nicht bereits vorhanden)
 ---------------------------------------------------------------------- */

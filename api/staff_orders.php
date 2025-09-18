@@ -2,6 +2,18 @@
 require_once __DIR__ . '/../functions.php';
 header('Content-Type: application/json');
 
+// Einheitlicher Name & sichere Cookie-Parameter
+session_name('TSID');
+session_set_cookie_params([
+  'lifetime' => 0,
+  'path'     => '/',
+  'domain'   => '',        // leer = aktuelle Host-Domain
+  'secure'   => true,      // HTTPS only
+  'httponly' => true,
+  'samesite' => 'Lax',     // sicher für Same-Origin-Fetch
+]);
+session_start();
+
 // einfacher Cookie-Login
 if (($_GET['login'] ?? '') === '1') {
   $input = json_decode(file_get_contents('php://input'), true) ?? [];
