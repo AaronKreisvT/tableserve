@@ -5,152 +5,119 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>TableServe – Tresen</title>
 
-  <!-- Favicon -->
   <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" href="/favicon.png?v=5">
-  <link rel="apple-touch-icon" href="/favicon.png?v=5">
+  <link rel="icon" type="image/png" href="/favicon.png?v=6">
+  <link rel="apple-touch-icon" href="/favicon.png?v=6">
   <meta name="theme-color" content="#111111">
 
+  <link rel="stylesheet" href="/assets/css/styles.css">
   <style>
-    :root { --bg:#fff; --fg:#111; --muted:#666; --panel:#fff; --border:#e5e5e5; --accent:#0d6efd }
+    :root { --bg:#fff; --fg:#111; --muted:#666; --panel:#fff; --border:#e5e5e5; --accent:#0d6efd; --radius:12px }
     :root.dark { --bg:#0f1115; --fg:#e8e8ea; --muted:#a0a3aa; --panel:#171922; --border:#2a2d38; --accent:#60a5fa }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--fg);
-      font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-      transition: background .25s ease, color .25s ease}
-    header, footer { background: var(--panel); border-bottom:1px solid var(--border) }
-    footer { border-top:1px solid var(--border); border-bottom:none }
-    .nav, .foot { max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;align-items:center }
+    body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;transition:background .25s,color .25s}
+    .nav,.foot{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;align-items:center}
     .brand{font-weight:700;text-decoration:none;color:var(--fg)}
     .spacer{flex:1}
-    .tabs a{ color:var(--fg); opacity:.85; text-decoration:none; padding:6px 10px; border-radius:8px }
-    .tabs a.active{ background:var(--border) }
-    .icon-btn{ border:1px solid var(--border); background:var(--panel); color:var(--fg);
-      border-radius:999px; padding:6px 10px; cursor:pointer; transition: transform .2s ease }
-    .icon-btn:active{ transform: scale(.96) }
-
+    .tabs a{color:var(--fg);opacity:.85;text-decoration:none;padding:6px 10px;border-radius:8px}
+    .tabs a.active{background:var(--border)}
+    .icon-btn{border:1px solid var(--border);background:var(--panel);color:var(--fg);border-radius:999px;padding:6px 10px;cursor:pointer}
     .container{max-width:1100px;margin:20px auto;padding:0 16px}
     .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-    .card{border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:12px}
+    .card{border:1px solid var(--border);border-radius:var(--radius);background:var(--panel);padding:12px}
     .row{display:flex;gap:8px;align-items:center;justify-content:space-between}
     .pill{background:var(--border);border-radius:999px;padding:2px 8px}
     input,button{padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--fg)}
     button{cursor:pointer;border-color:transparent;background:var(--accent);color:#fff}
     button[disabled]{opacity:.6;cursor:not-allowed}
-    .muted{color:var(--muted)} .small{font-size:.85em}
-    ul{padding-left:18px}
-    a{color:var(--accent)}
+    .muted{color:var(--muted)} .small{font-size:.85em} ul{padding-left:18px} a{color:var(--accent)}
   </style>
 
   <script>
     (function(){
       try {
         const pref = localStorage.getItem('ts-theme');
-        const dark = pref ? (pref === 'dark') : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const dark = pref ? (pref==='dark') : window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (dark) document.documentElement.classList.add('dark');
       } catch(e){}
     })();
   </script>
+
+  <script src="/assets/js/include.js" defer></script>
 </head>
-<body>
+<body data-page="staff">
+  <div data-include="/partials/header-tableserve.html"></div>
 
-<header>
-  <div class="nav">
-    <a class="brand" href="/index.html">TableServe</a>
-    <div class="spacer"></div>
-    <nav class="tabs">
-      <a href="/index.html">Bestellen</a>
-      <a href="/staff.html" class="active">Tresen</a>
-    </nav>
-    <button id="theme-toggle" class="icon-btn" title="Dark/Light">🌙</button>
-  </div>
-</header>
-
-<main class="container">
-  <h1>Tresen-Board</h1>
-
-  <div class="card" style="margin-bottom:12px">
-    <div class="row">
-      <input id="key" placeholder="Staff-Key" type="password" style="width:260px">
-      <button id="loginBtn">Anmelden</button>
+  <main class="container">
+    <h1>Tresen-Board</h1>
+    <div class="card" style="margin-bottom:12px">
+      <div class="row">
+        <input id="key" placeholder="Staff-Key" type="password" style="width:260px">
+        <button id="loginBtn">Anmelden</button>
+      </div>
+      <span id="loginMsg" class="muted"></span>
     </div>
-    <span id="loginMsg" class="muted"></span>
-  </div>
 
-  <p class="muted small">Zeigt „offen“ & „in Zubereitung“. Aktualisiert automatisch.</p>
-  <div id="orders" class="grid"></div>
-</main>
+    <p class="muted small">Zeigt „offen“ & „in Zubereitung“. Aktualisiert automatisch.</p>
+    <div id="orders" class="grid"></div>
+  </main>
 
-<footer>
-  <div class="foot">
-    <span>© <span id="year"></span> Aaron Kreis</span>
-    <span class="spacer"></span>
-    <a href="/imprint.html">Imprint</a>
-    <span>·</span>
-    <a href="/privacy.html">Privacy</a>
-  </div>
-</footer>
+  <div data-include="/partials/footer-tableserve.html"></div>
 
-<script>
-  // Theme toggle
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    const el = document.documentElement;
-    const dark = !el.classList.contains('dark');
-    el.classList.toggle('dark', dark);
-    try { localStorage.setItem('ts-theme', dark ? 'dark' : 'light'); } catch(e){}
-  });
-  document.getElementById('year').textContent = new Date().getFullYear();
-
-  let timer = null;
-
-  document.getElementById('loginBtn').addEventListener('click', async ()=>{
-    const key = document.getElementById('key').value.trim();
-    const r = await fetch('/api/staff_orders.php?login=1', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({key})
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const active = document.querySelector('.tabs a[data-active="staff"]');
+      if (active) active.classList.add('active');
+      const tbtn = document.getElementById('theme-toggle');
+      if (tbtn) tbtn.addEventListener('click', () => {
+        const dark = !document.documentElement.classList.contains('dark');
+        document.documentElement.classList.toggle('dark', dark);
+        try { localStorage.setItem('ts-theme', dark ? 'dark' : 'light'); } catch(e){}
+      });
     });
-    document.getElementById('loginMsg').textContent = r.ok ? 'Angemeldet.' : 'Falscher Key.';
-    if(r.ok){ start(); }
-  });
 
-  async function fetchOrders(){
-    const r = await fetch('/api/staff_orders.php', {headers:{'Accept':'application/json'}});
-    if(!r.ok) return [];
-    const data = await r.json();
-    return Array.isArray(data.orders) ? data.orders : [];
-  }
+    let timer = null;
+    document.getElementById('loginBtn').addEventListener('click', async ()=>{
+      const key = document.getElementById('key').value.trim();
+      const r = await fetch('/api/staff_orders.php?login=1', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key})
+      });
+      document.getElementById('loginMsg').textContent = r.ok ? 'Angemeldet.' : 'Falscher Key.';
+      if(r.ok){ start(); }
+    });
 
-  function render(orders){
-    const box = document.getElementById('orders'); box.innerHTML='';
-    if(orders.length===0){ box.innerHTML = "<p class='muted'>Keine offenen Bestellungen.</p>"; return; }
-    for(const o of orders){
-      const ul = (o.items||[]).map(it => `<li>${it.qty}× ${it.name}${it.notes?` <span class="muted">(${it.notes})</span>`:''}</li>`).join('');
-      const div = document.createElement('div'); div.className='card';
-      div.innerHTML = `
-        <div class="row"><strong>${o.table_name||o.table_code||'Tisch'}</strong><span class="pill">${o.status}</span></div>
-        <div class="small muted">${o.created_at||''}</div>
-        <ul>${ul}</ul>
-        <div class="row">
-          <button onclick="setStatus('${o.id}','in_prep')">In Zubereitung</button>
-          <button onclick="setStatus('${o.id}','served')">Serviert</button>
-          <button onclick="setStatus('${o.id}','cancelled')">Storno</button>
-        </div>`;
-      box.appendChild(div);
+    async function fetchOrders(){
+      const r = await fetch('/api/staff_orders.php', {headers:{'Accept':'application/json'}});
+      if(!r.ok) return [];
+      const data = await r.json();
+      return Array.isArray(data.orders) ? data.orders : [];
     }
-  }
-
-  async function setStatus(id, status){
-    await fetch('/api/set_status.php', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id, status})
-    });
-    tick();
-  }
-
-  async function tick(){ render(await fetchOrders()); }
-  function start(){ if(timer) clearInterval(timer); tick(); timer=setInterval(tick, 4000); }
-</script>
+    function render(orders){
+      const box = document.getElementById('orders'); box.innerHTML='';
+      if(orders.length===0){ box.innerHTML="<p class='muted'>Keine offenen Bestellungen.</p>"; return; }
+      for(const o of orders){
+        const ul = (o.items||[]).map(it => `<li>${it.qty}× ${it.name}${it.notes?` <span class="muted">(${it.notes})</span>`:''}</li>`).join('');
+        const div = document.createElement('div'); div.className='card';
+        div.innerHTML = `
+          <div class="row"><strong>${o.table_name||o.table_code||'Tisch'}</strong><span class="pill">${o.status}</span></div>
+          <div class="small muted">${o.created_at||''}</div>
+          <ul>${ul}</ul>
+          <div class="row">
+            <button onclick="setStatus('${o.id}','in_prep')">In Zubereitung</button>
+            <button onclick="setStatus('${o.id}','served')">Serviert</button>
+            <button onclick="setStatus('${o.id}','cancelled')">Storno</button>
+          </div>`;
+        box.appendChild(div);
+      }
+    }
+    async function setStatus(id, status){
+      await fetch('/api/set_status.php', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id, status})
+      });
+      tick();
+    }
+    async function tick(){ render(await fetchOrders()); }
+    function start(){ if(timer) clearInterval(timer); tick(); timer=setInterval(tick, 4000); }
+  </script>
 </body>
 </html>

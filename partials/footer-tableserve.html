@@ -1,9 +1,13 @@
 <footer>
-  <div class="row">
+  <div class="foot">
     <span>© <span id="year"></span> Aaron Kreis</span>
-    <span>•</span>
+    <span class="spacer"></span>
     <a href="/imprint.html">Imprint</a>
-    <span>•</span>
+    <span>·</span>
     <a href="/privacy.html">Privacy</a>
   </div>
 </footer>
+<script>
+  // Jahr setzen (wenn footer via include geladen wurde)
+  (function(){ var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear(); })();
+</script>
