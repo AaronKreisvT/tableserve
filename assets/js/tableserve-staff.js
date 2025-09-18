@@ -15,7 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const key = (document.getElementById('key')?.value || '').trim();
       const r = await fetch('/api/staff_orders.php?login=1', {
-        method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ key })
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ key })
       });
       const msg = document.getElementById('loginMsg');
       if (msg) msg.textContent = r.ok ? 'Angemeldet.' : 'Falscher Key.';
@@ -25,7 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // -------- Bestell-Board --------
   async function fetchOrders(){
-    const r = await fetch('/api/staff_orders.php', { headers:{ 'Accept':'application/json' } });
+    const r = await fetch('/api/staff_orders.php', {
+      headers:{ 'Accept':'application/json' },
+      credentials: 'same-origin'
+    });
     if (!r.ok) return [];
     const data = await r.json();
     return Array.isArray(data.orders) ? data.orders : [];
@@ -52,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     box.querySelectorAll('button[data-status]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         await fetch('/api/set_status.php', {
-          method:'POST', headers:{'Content-Type':'application/json'},
+          method:'POST', headers:{'Content-Type':'application/json'}, credentials: 'same-origin',
           body: JSON.stringify({id: btn.dataset.id, status: btn.dataset.status})
         });
         tick();
@@ -68,7 +74,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const list = document.getElementById('tablesList'); if (!list) return;
     list.innerHTML = `<p class="muted">Lade Tische…</p>`;
     try{
-      const r = await fetch('/api/tables.php', { headers:{ 'Accept':'application/json' } });
+      const r = await fetch('/api/tables.php', {
+        headers:{ 'Accept':'application/json' },
+        credentials: 'same-origin'
+      });
       if(!r.ok) throw 0;
       const data = await r.json();
       const tables = Array.isArray(data.tables) ? data.tables : [];
@@ -105,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
           await fetch('/api/tables.php', {
             method:'PATCH',
             headers:{'Content-Type':'application/json'},
+            credentials: 'same-origin'
             body: JSON.stringify({ code, name })
           });
           loadTables();
@@ -117,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
           await fetch('/api/tables.php', {
             method:'DELETE',
             headers:{'Content-Type':'application/json'},
+            credentials: 'same-origin',
             body: JSON.stringify({ code })
           });
           loadTables();
@@ -137,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await fetch('/api/tables.php', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
+        credentials: 'same-origin',
         body: JSON.stringify({ name })
       });
       (document.getElementById('newTableName')||{}).value = '';
