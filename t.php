@@ -26,6 +26,7 @@ $menu = array_values(array_filter(csv_read_assoc(CSV_MENU), fn($m) => ($m['activ
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/favicon.png">
   <meta name="theme-color" content="#ffffff">
+  <script src="assets/js/include.js" defer></script>
 </head>
 <body data-page="tableserve">
   <!-- Gemeinsamer Header -->
