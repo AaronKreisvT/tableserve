@@ -13,7 +13,7 @@ $menu = array_values(array_filter(csv_read_assoc(CSV_MENU), fn($m) => ($m['activ
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Bestellung – <?= htmlspecialchars($tbl['name']) ?></title>
-  <link rel="stylesheet" href="/assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
   <style>
     /* Kleine Ergänzungen für TableServe */
     .container{max-width:1000px;margin:24px auto;padding:0 16px}
@@ -65,7 +65,7 @@ $menu = array_values(array_filter(csv_read_assoc(CSV_MENU), fn($m) => ($m['activ
 
   <!-- Gemeinsamer Footer -->
   <?php include __DIR__ . 'partials/footer-tableserve.html'; ?>
-  <script src="/assets/js/include.js" defer></script>
+  <script src="assets/js/include.js" defer></script>
   <script>
     const tableCode = <?= json_encode($tbl['code'], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) ?>;
     const cart = {};
