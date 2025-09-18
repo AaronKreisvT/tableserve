@@ -8,12 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let timer = null;
 
-  const loginBtn = document.getElementById('loginBtn');
-  if (loginBtn) {
-    loginBtn.addEventListener('click', async () => {
+  const loginForm = document.getElementById('loginForm');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault(); // kein Seitenreload
       const key = (document.getElementById('key')?.value || '').trim();
       const r = await fetch('/api/staff_orders.php?login=1', {
-        method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ key })
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ key })
       });
       const msg = document.getElementById('loginMsg');
       if (msg) msg.textContent = r.ok ? 'Angemeldet.' : 'Falscher Key.';

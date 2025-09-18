@@ -28,13 +28,13 @@
   <main class="container">
     <h1>Tresen-Board</h1>
 
-    <div class="card" style="margin-bottom:12px">
-      <div class="row">
-        <input id="key" placeholder="Staff-Key" type="password" style="width:260px">
-        <button id="loginBtn">Anmelden</button>
-      </div>
-      <span id="loginMsg" class="muted"></span>
-    </div>
+  <div class="card" style="margin-bottom:12px">
+    <form id="loginForm" class="row">
+      <input id="key" name="key" placeholder="Staff-Key" type="password" style="width:260px" required>
+      <button type="submit" id="loginBtn">Anmelden</button>
+    </form>
+    <span id="loginMsg" class="muted"></span>
+  </div>
 
     <p class="muted small">Zeigt „offen“ & „in Zubereitung“. Aktualisiert automatisch.</p>
     <div id="orders" class="grid"></div>
