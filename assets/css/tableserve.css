@@ -157,3 +157,15 @@ button[disabled] { opacity: .6; cursor: not-allowed }
 .pill { background: var(--ts-border); border-radius: 999px; padding: 2px 8px }
 .small { font-size: .85em }
 ul { padding-left: 18px }
+
+/* === Header sticky/fixed oben === */
+header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;            /* bleibt über allem */
+}
+
+/* Platz schaffen, damit Inhalt nicht unter den Header rutscht */
+body {
+  padding-top: 60px; /* = ungefähr die Höhe deines Headers (.nav) */
+}
