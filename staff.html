@@ -5,58 +5,39 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>TableServe – Tresen</title>
 
-  <!-- Favicon -->
   <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" href="/favicon.png?v=6">
-  <link rel="apple-touch-icon" href="/favicon.png?v=6">
+  <link rel="icon" type="image/png" href="/favicon.png?v=7">
+  <link rel="apple-touch-icon" href="/favicon.png?v=7">
   <meta name="theme-color" content="#111111">
 
-  <!-- Styles -->  
   <link rel="stylesheet" href="/assets/css/styles.css">
   <link rel="stylesheet" href="/assets/css/tableserve.css">
 
-  <!-- Partials-Loader + Seitenskript -->
   <script src="/assets/js/include.js" defer></script>
   <script src="/assets/js/tableserve-staff.js" defer></script>
-
 </head>
 <body data-page="staff">
-
-  <!-- Header-Partial -->
   <div data-include="/partials/header-tableserve.html"></div>
 
   <main class="container">
     <h1>Tresen-Board</h1>
 
-  <div class="card" style="margin-bottom:12px">
-    <form id="loginForm" class="row" action="#" method="post" autocomplete="off" novalidate>
-      <input id="key" name="key" placeholder="Staff-Key" type="password" style="width:260px" required>
-      <button type="submit" id="loginBtn">Anmelden</button>
-    </form>
-    <span id="loginMsg" class="muted"></span>
-  </div>
-
-    <p class="muted small">Zeigt „offen“ & „in Zubereitung“. Aktualisiert automatisch.</p>
-    <div id="orders" class="grid"></div>
-
-    <!-- Tische verwalten -->
+    <!-- Login -->
     <div class="card" style="margin-bottom:12px">
-      <h2 style="margin-top:0">Tische verwalten</h2>
-
-      <form id="tableCreateForm" class="row" style="gap:8px; margin-bottom:10px">
-        <input id="newTableName" name="name" placeholder="Neuer Tischnamen (z. B. Tisch 7)" required style="flex:1">
-        <button type="submit">Tisch anlegen</button>
+      <form id="loginForm" class="row" action="#" method="post" autocomplete="off" novalidate>
+        <input id="key" name="key" placeholder="Staff-Key" type="password" style="width:260px" required>
+        <button type="submit" id="loginBtn">Anmelden</button>
       </form>
-
-      <div id="tablesList">
-        <p class="muted">Lade Tische…</p>
-      </div>
+      <span id="loginMsg" class="muted"></span>
     </div>
 
+    <!-- Hinweis -->
+    <p class="muted small">Zeigt „offen“ & „in Zubereitung“. Aktualisiert automatisch.</p>
+
+    <!-- Bestellungen -->
+    <div id="orders" class="grid"></div>
   </main>
 
-  <!-- Footer-Partial -->
   <div data-include="/partials/footer-tableserve.html"></div>
-
 </body>
 </html>
