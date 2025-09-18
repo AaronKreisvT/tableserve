@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TableServe – Bestellung</title>
+
+  <!-- Favicon (Cache-Buster) -->
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="/favicon.png?v=5">
+  <link rel="apple-touch-icon" href="/favicon.png?v=5">
+  <meta name="theme-color" content="#111111">
+
+  <!-- Minimal Styles + Theme (self-contained) -->
+  <style>
+    :root {
+      --bg: #ffffff; --fg:#111; --muted:#666; --panel:#fff; --border:#e5e5e5; --accent:#0d6efd;
+    }
+    :root.dark {
+      --bg: #0f1115; --fg:#e8e8ea; --muted:#a0a3aa; --panel:#171922; --border:#2a2d38; --accent:#60a5fa;
+    }
+    * { box-sizing: border-box }
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--fg);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      transition: background .25s ease, color .25s ease;
+    }
+    header, footer { background: var(--panel); border-bottom:1px solid var(--border) }
+    footer { border-top:1px solid var(--border); border-bottom:none }
+    .nav, .foot {
+      max-width: 1000px; margin: 0 auto; padding: 12px 16px;
+      display:flex; gap:12px; align-items:center
+    }
+    .brand { font-weight:700; text-decoration:none; color:var(--fg) }
+    .spacer{flex:1}
+    .tabs a{ color:var(--fg); opacity:.85; text-decoration:none; padding:6px 10px; border-radius:8px }
+    .tabs a.active{ background:var(--border) }
+    .icon-btn{ border:1px solid var(--border); background:var(--panel); color:var(--fg);
+      border-radius:999px; padding:6px 10px; cursor:pointer; transition: transform .2s ease }
+    .icon-btn:active{ transform: scale(.96) }
+
+    .container{max-width:1000px;margin:20px auto;padding:0 16px}
+    .muted{color:var(--muted)}
+    .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+    .card{border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:12px}
+    .row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+    .badge{background:var(--border);border-radius:8px;padding:2px 8px}
+    input,textarea,button{padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--fg)}
+    button{cursor:pointer;border-color:transparent;background:var(--accent);color:#fff}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+    ul{padding-left:18px}
+    a{color:var(--accent)}
+  </style>
+
+  <script>
+    // Theme init (before paint)
+    (function(){
+      try {
+        const pref = localStorage.getItem('ts-theme');
+        const dark = pref ? (pref === 'dark') : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.classList.add('dark');
+      } catch(e){}
+    })();
+  </script>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a class="brand" href="/index.html">TableServe</a>
+    <div class="spacer"></div>
+    <nav class="tabs">
+      <a href="/index.html" class="active">Bestellen</a>
+      <a href="/staff.html">Tresen</a>
+    </nav>
+    <button id="theme-toggle" class="icon-btn" title="Dark/Light">🌙</button>
+  </div>
+</header>
+
+<main class="container">
+  <h1>Bestellen</h1>
+  <p id="tableInfo" class="muted"></p>
+
+  <div id="menu"></div>
+
+  <h3>Warenkorb</h3>
+  <div id="cart"><p class="muted">Noch leer.</p></div>
+  <button id="send" disabled>Bestellung abschicken</button>
+  <p id="msg" class="muted"></p>
+</main>
+
+<footer>
+  <div class="foot">
+    <span>© <span id="year"></span> Aaron Kreis</span>
+    <span class="spacer"></span>
+    <a href="/imprint.html">Imprint</a>
+    <span>·</span>
+    <a href="/privacy.html">Privacy</a>
+  </div>
+</footer>
+
+<script>
+  // Theme toggle
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const el = document.documentElement;
+    const dark = !el.classList.contains('dark');
+    el.classList.toggle('dark', dark);
+    try { localStorage.setItem('ts-theme', dark ? 'dark' : 'light'); } catch(e){}
+  });
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // ---- App state ----
+  const params = new URLSearchParams(location.search);
+  const tableCode = params.get('code') || '';
+  document.getElementById('tableInfo').textContent = tableCode ? ("Tisch-Code: " + tableCode) : "Kein Tisch-Code in der URL (?code=...)";
+
+  const state = { items: [], cart: {} };
+  const euro = c => (c/100).toFixed(2).replace('.', ',') + ' €';
+
+  async function loadMenu(){
+    // 1) Versuch: API (falls du später /api/menu.php baust)
+    try {
+      const r = await fetch('/api/menu.php', {headers: {'Accept':'application/json'}});
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data.items)) { state.items = data.items; renderMenu(); return; }
+      }
+    } catch(e){ /* ignore */ }
+
+    // 2) Fallback: CSV direkt (data/menu.csv) -> clientseitig parsen
+    try {
+      const r = await fetch('/data/menu.csv', {cache:'no-cache'});
+      if (!r.ok) throw new Error('menu.csv not accessible');
+      const text = await r.text();
+      const rows = text.trim().split(/\r?\n/).map(l => l.split(';'));
+      const headers = rows.shift();
+      const idx = Object.fromEntries(headers.map((h,i)=>[h,i]));
+      state.items = rows.map(r => ({
+        id: parseInt(r[idx.id],10),
+        name: r[idx.name],
+        price_cents: parseInt(r[idx.price_cents],10),
+        category: r[idx.category],
+        active: r[idx.active] === '1'
+      })).filter(x => x.active);
+      renderMenu();
+    } catch(e){
+      document.getElementById('menu').innerHTML = `<p class="muted">Menü konnte nicht geladen werden.</p>`;
+    }
+  }
+
+  function renderMenu(){
+    const byCat = {};
+    for(const it of state.items){
+      (byCat[it.category] ||= []).push(it);
+    }
+    let html = "";
+    for(const [cat, arr] of Object.entries(byCat)){
+      html += `<h3>${cat}</h3><div class="grid">`;
+      for(const it of arr){
+        html += `
+        <div class="card">
+          <div class="row"><strong>${it.name}</strong><span class="badge">${euro(it.price_cents)}</span></div>
+          <div class="row">
+            <input type="number" min="1" value="1" id="qty-${it.id}" style="width:70px">
+            <button onclick="addToCart(${it.id})">Hinzufügen</button>
+          </div>
+          <textarea id="note-${it.id}" placeholder="Optional: Hinweis (z. B. ohne Eis)" rows="2" style="width:100%;margin-top:6px"></textarea>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+    document.getElementById('menu').innerHTML = html;
+  }
+
+  function addToCart(id){
+    const qty = Math.max(1, parseInt(document.getElementById(`qty-${id}`).value || "1",10));
+    const notes = (document.getElementById(`note-${id}`).value || "").trim();
+    const key = id+"|"+(notes||"");
+    state.cart[key] = (state.cart[key]||0) + qty;
+    renderCart();
+  }
+  function delItem(key){ delete state.cart[key]; renderCart(); }
+
+  function renderCart(){
+    const box = document.getElementById('cart');
+    const lines = Object.entries(state.cart);
+    if(lines.length===0){ box.innerHTML = "<p class='muted'>Noch leer.</p>"; document.getElementById('send').disabled=true; return; }
+    let html = "<ul>", sum=0;
+    for(const [key, qty] of lines){
+      const [id, note] = key.split("|");
+      const it = state.items.find(x=>x.id==id);
+      sum += (it?.price_cents||0) * qty;
+      html += `<li>${qty}× ${it?.name||("ID "+id)} ${note?`<span class="muted">(${note})</span>`:""} — ${euro((it?.price_cents||0)*qty)}
+      <button onclick="delItem('${key.replaceAll("'","\\'")}')">−</button></li>`;
+    }
+    html += `</ul><p><strong>Summe:</strong> ${euro(sum)}</p>`;
+    box.innerHTML = html;
+    document.getElementById('send').disabled=false;
+  }
+
+  document.getElementById('send').addEventListener('click', async ()=>{
+    if(!tableCode){ document.getElementById('msg').textContent = "Fehlender Tisch-Code (?code=...)"; return; }
+    const items = Object.entries(state.cart).map(([key, qty])=>{
+      const [id, note] = key.split("|");
+      return { item_id: parseInt(id,10), qty, notes: note||null };
+    });
+    try {
+      const res = await fetch('/api/order.php', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ table_code: tableCode, items })
+      });
+      if(!res.ok) throw new Error(await res.text());
+      state.cart = {}; renderCart();
+      document.getElementById('msg').textContent = "Bestellung gesendet. Die Bedienung kommt gleich!";
+    } catch(err){
+      document.getElementById('msg').textContent = "Fehler beim Abschicken.";
+    }
+  });
+
+  loadMenu();
+</script>
+</body>
+</html>
