@@ -1,0 +1,47 @@
+:root {
+  --bg:#fff; --fg:#111; --muted:#666; --panel:#fff; --border:#e5e5e5; --accent:#0d6efd; --radius:12px;
+}
+:root.dark {
+  --bg:#0f1115; --fg:#e8e8ea; --muted:#a0a3aa; --panel:#171922; --border:#2a2d38; --accent:#60a5fa;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  transition:background .25s,color .25s;
+}
+
+/* Header/Footer (passend zu deinen Partials) */
+header, footer { background: var(--panel); border-bottom:1px solid var(--border) }
+footer { border-top:1px solid var(--border); border-bottom:none }
+.nav, .foot { max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;align-items:center }
+.brand{font-weight:700;text-decoration:none;color:var(--fg)}
+.spacer{flex:1}
+.tabs a{ color:var(--fg); opacity:.85; text-decoration:none; padding:6px 10px; border-radius:8px }
+.tabs a.active{ background:var(--border) }
+.icon-btn{
+  border:1px solid var(--border);background:var(--panel);color:var(--fg);
+  border-radius:999px;padding:6px 10px;cursor:pointer;transition:transform .2s ease
+}
+.icon-btn:active{ transform: scale(.96) }
+
+/* Seite: gemeinsam */
+.container{max-width:1100px;margin:20px auto;padding:0 16px}
+.muted{color:var(--muted)}
+a{color:var(--accent)}
+
+/* Bestellseite */
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.card{border:1px solid var(--border);border-radius:var(--radius);background:var(--panel);padding:12px}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.badge{background:var(--border);border-radius:8px;padding:2px 8px}
+input,textarea,button{
+  padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--fg)
+}
+button{cursor:pointer;border-color:transparent;background:var(--accent);color:#fff}
+button[disabled]{opacity:.6;cursor:not-allowed}
+ul{padding-left:18px}
+
+/* Staff Board */
+.pill{background:var(--border);border-radius:999px;padding:2px 8px}
+.small{font-size:.85em}
