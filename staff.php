@@ -21,7 +21,7 @@
 </head>
 <body data-page="tresen">
   <!-- Gemeinsamer Header -->
-  <div data-include="/partials/header-tableserve.html"></div>
+  <?php include __DIR__ . '/partials/header-tableserve.html'; ?>
 
   <main class="container">
     <h1>Tresen-Board</h1>
@@ -38,7 +38,7 @@
   </main>
 
   <!-- Gemeinsamer Footer -->
-  <div data-include="/partials/footer-tableserve.html"></div>
+  <?php include __DIR__ . '/partials/footer-tableserve.html'; ?>
 
   <script src="/assets/js/include.js" defer></script>
   <script>

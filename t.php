@@ -29,8 +29,7 @@ $menu = array_values(array_filter(csv_read_assoc(CSV_MENU), fn($m) => ($m['activ
 </head>
 <body data-page="tableserve">
   <!-- Gemeinsamer Header -->
-  <div data-include="/partials/header-tableserve.html"></div>
-
+  <?php include __DIR__ . '/partials/header-tableserve.html'; ?>
   <main class="container">
     <h1><?= htmlspecialchars($tbl['name']) ?></h1>
     <p class="muted">Tisch-Code: <?= htmlspecialchars($tbl['code']) ?></p>
@@ -65,8 +64,7 @@ $menu = array_values(array_filter(csv_read_assoc(CSV_MENU), fn($m) => ($m['activ
   </main>
 
   <!-- Gemeinsamer Footer -->
-  <div data-include="/partials/footer-tableserve.html"></div>
-
+  <?php include __DIR__ . '/partials/footer-tableserve.html'; ?>
   <script src="/assets/js/include.js" defer></script>
   <script>
     const tableCode = <?= json_encode($tbl['code'], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) ?>;
