@@ -1,6 +1,6 @@
 <?php
 // Einfaches "Secret" fürs Tresenboard
-define('STAFF_KEY', 'super-geheim-123'); // ändere das!
+define('STAFF_KEY', '12345678'); // ändere das!
 date_default_timezone_set('Europe/Paris');
 
 // Pfade
