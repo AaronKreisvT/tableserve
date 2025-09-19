@@ -96,36 +96,32 @@ function ts_lock_table($table_code) {
 function ts_unlock($fh) {
     if ($fh) { flock($fh, LOCK_UN); fclose($fh); }
 }
-if (!function_exists('csv_read_assoc')) {
-  function csv_read_assoc(string $file): array {
-    if (!is_file($file)) return [];
-    $f = fopen($file, 'r'); if (!$f) return [];
-    $rows = [];
-    $headers = fgetcsv($f, 0, ';');
-    if (!$headers) { fclose($f); return []; }
-    while (($r = fgetcsv($f, 0, ';')) !== false) {
-      $row = [];
-      foreach ($headers as $i => $h) { $row[$h] = $r[$i] ?? ''; }
-      $rows[] = $row;
-    }
-    fclose($f);
-    return $rows;
+function csv_read_assoc(string $file): array {
+  if (!is_file($file)) return [];
+  $f = fopen($file, 'r'); if (!$f) return [];
+  $rows = [];
+  $headers = fgetcsv($f, 0, ';');
+  if (!$headers) { fclose($f); return []; }
+  while (($r = fgetcsv($f, 0, ';')) !== false) {
+    $row = [];
+    foreach ($headers as $i => $h) { $row[$h] = $r[$i] ?? ''; }
+    $rows[] = $row;
   }
+  fclose($f);
+  return $rows;
 }
 
-if (!function_exists('csv_write_all')) {
-  function csv_write_all(string $file, array $headers, array $rows): bool {
-    @mkdir(dirname($file), 0775, true);
-    $tmp = $file . '.tmp';
-    $f = fopen($tmp, 'w');
-    if (!$f) return false;
-    fputcsv($f, $headers, ';');
-    foreach ($rows as $row) {
-      $line = [];
-      foreach ($headers as $h) { $line[] = $row[$h] ?? ''; }
-      fputcsv($f, $line, ';');
-    }
-    fclose($f);
-    return @rename($tmp, $file);
+function csv_write_all(string $file, array $headers, array $rows): bool {
+  @mkdir(dirname($file), 0775, true);
+  $tmp = $file . '.tmp';
+  $f = fopen($tmp, 'w');
+  if (!$f) return false;
+  fputcsv($f, $headers, ';');
+  foreach ($rows as $row) {
+    $line = [];
+    foreach ($headers as $h) { $line[] = $row[$h] ?? ''; }
+    fputcsv($f, $line, ';');
   }
+  fclose($f);
+  return @rename($tmp, $file);
 }
