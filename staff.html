@@ -15,6 +15,7 @@
 
   <script src="/assets/js/include.js" defer></script>
   <script src="/assets/js/tableserve-staff.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 </head>
 <body data-page="staff">
   <div data-include="/partials/header-tableserve.html"></div>
@@ -36,6 +37,9 @@
 
     <!-- Bestellungen -->
     <div id="orders" class="grid"></div>
+
+    <!-- Auswertung -->
+    <button id="btnReportToday" type="button" title="Auswertung Heute als PDF">PDF Auswertung (Heute)</button>
   </main>
 
   <div data-include="/partials/footer-tableserve.html"></div>
