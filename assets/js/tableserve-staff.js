@@ -1,3 +1,16 @@
+async function checkLoginStatus() {
+  try {
+    const r = await fetch('/api/staff_orders.php', {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!r.ok) return false;
+    const j = await r.json();
+    // wenn Response.ok === true, ist man eingeloggt
+    return j.ok === true;
+  } catch { return false; }
+}
+
 // Staff-Seite: Login, Bestell-Board (kein Admin/CRUD mehr)
 document.addEventListener('DOMContentLoaded', () => {
   // aktiver Tab markieren
@@ -93,11 +106,22 @@ document.addEventListener('DOMContentLoaded', () => {
   function start(){ if (timer) clearInterval(timer); tick(); timer = setInterval(tick, 4000); }
 });
 // -------- PDF Auswertung (Heute) --------
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const btn = document.getElementById('btnReportToday');
   if (!btn) return;
 
+  const loggedIn = await checkLoginStatus();
+  if (loggedIn) {
+    btn.style.display = 'inline-block';
+  } else {
+    btn.style.display = 'none';
+  }
+
   btn.addEventListener('click', async () => {
+    if (!loggedIn) {
+      alert('Bitte zuerst einloggen!');
+      return;
+    }
     try {
       // Heutiges Datum (lokal) im Format YYYY-MM-DD
       const now = new Date();
