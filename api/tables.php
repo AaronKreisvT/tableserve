@@ -10,14 +10,14 @@
 //   $_SESSION['staff_authenticated'] === true  ODER
 //   $_SESSION['admin_authenticated'] === true
 
-require_once __DIR__ . '/../functions.php';
-
-// Einheitliche Session (Name/Flags wie in deinen anderen APIs)
 session_name('TSID');
 session_set_cookie_params([
-  'lifetime'=>0, 'path'=>'/', 'domain'=>'', 'secure'=>true, 'httponly'=>true, 'samesite'=>'Lax'
+  'lifetime'=>0,'path'=>'/','domain'=>'','secure'=>true,'httponly'=>true,'samesite'=>'Lax'
 ]);
 session_start();
+
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../functions.php';
 
 header('Content-Type: application/json; charset=utf-8');
 

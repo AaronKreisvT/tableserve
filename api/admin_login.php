@@ -3,13 +3,13 @@
 //   POST ?login=1  {password}  -> setzt $_SESSION['admin_authenticated']=true
 //   POST ?logout=1             -> zerstört Session
 
-require_once __DIR__ . '/../functions.php';
-
 session_name('TSID');
 session_set_cookie_params([
-  'lifetime'=>0, 'path'=>'/', 'domain'=>'', 'secure'=>true, 'httponly'=>true, 'samesite'=>'Lax'
+  'lifetime'=>0,'path'=>'/','domain'=>'','secure'=>true,'httponly'=>true,'samesite'=>'Lax'
 ]);
 session_start();
+
+require_once __DIR__ . '/../config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');

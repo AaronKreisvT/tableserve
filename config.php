@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 // Einfaches "Secret" fürs Tresenboard
 define('STAFF_KEY', '12345678'); // ändere das!
 define('ADMIN_KEY', '12345678'); // das auch!
