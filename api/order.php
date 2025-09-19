@@ -1,154 +1,174 @@
 <?php
-// api/order.php — nimmt Bestellungen entgegen und schreibt sie in CSV
-// ID-Strategie: <TISCHCODE>-<laufende Nummer pro Tisch>
-// Thread-Safety: per-Tisch Lock, damit ID-Vergabe + Schreiben atomar sind.
+// /api/order.php — Bestellung vom Gast anlegen (ohne Login)
+// Request-JSON: { table_code: "AB12CD34", items: [{item_id, qty, notes|null}, ...] }
+// Response: { ok:true, order_id:"<TABLE>-<SUFFIX>" }
 
-require_once __DIR__ . '/../functions.php';
-header('Content-Type: application/json; charset=utf-8');
-
-// Einheitlicher Name & sichere Cookie-Parameter
 session_name('TSID');
 session_set_cookie_params([
-  'lifetime' => 0,
-  'path'     => '/',
-  'domain'   => '',        // leer = aktuelle Host-Domain
-  'secure'   => true,      // HTTPS only
-  'httponly' => true,
-  'samesite' => 'Lax',     // sicher für Same-Origin-Fetch
+  'lifetime'=>0,'path'=>'/','domain'=>'','secure'=>true,'httponly'=>true,'samesite'=>'Lax'
 ]);
 session_start();
 
-/* ----------------------------------------------------------------------
-   Fallback-Helfer (werden nur definiert, falls nicht bereits vorhanden)
----------------------------------------------------------------------- */
-if (!function_exists('ts_lock_table')) {
-    function ts_lock_table($table_code) {
-        $safe = preg_replace('/[^A-Za-z0-9_-]/', '', (string)$table_code);
-        $lockFile = DATA_DIR . '/lock_' . $safe . '.lock';
-        $fh = fopen($lockFile, 'c'); // create if not exists
-        if (!$fh) return false;
-        flock($fh, LOCK_EX);
-        return $fh; // wichtig: Handle halten bis ts_unlock
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../functions.php';
+
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
+
+// Fallback-Konstanten (falls in functions.php nicht gesetzt)
+if (!defined('DATA_DIR'))           define('DATA_DIR',           __DIR__ . '/../data');
+if (!defined('CSV_TABLES'))         define('CSV_TABLES',         DATA_DIR . '/tables.csv');
+if (!defined('CSV_MENU'))           define('CSV_MENU',           DATA_DIR . '/menu.csv');
+if (!defined('CSV_ORDERS'))         define('CSV_ORDERS',         DATA_DIR . '/orders.csv');
+if (!defined('CSV_ORDER_ITEMS'))    define('CSV_ORDER_ITEMS',    DATA_DIR . '/order_items.csv');
+
+// CSV-Helfer, nur falls nicht vorhanden
+if (!function_exists('csv_read_assoc')) {
+  function csv_read_assoc(string $file): array {
+    if (!is_file($file)) return [];
+    $f = fopen($file, 'r'); if (!$f) return [];
+    $rows = [];
+    $headers = fgetcsv($f, 0, ';');
+    if (!$headers) { fclose($f); return []; }
+    while (($r = fgetcsv($f, 0, ';')) !== false) {
+      $row = [];
+      foreach ($headers as $i => $h) { $row[$h] = $r[$i] ?? ''; }
+      $rows[] = $row;
     }
+    fclose($f); return $rows;
+  }
 }
-if (!function_exists('ts_unlock')) {
-    function ts_unlock($fh) {
-        if ($fh) { flock($fh, LOCK_UN); fclose($fh); }
+if (!function_exists('csv_write_all')) {
+  function csv_write_all(string $file, array $headers, array $rows): bool {
+    @mkdir(dirname($file), 0775, true);
+    $tmp = $file . '.tmp';
+    $f = fopen($tmp, 'w'); if (!$f) return false;
+    fputcsv($f, $headers, ';');
+    foreach ($rows as $row) {
+      $line = [];
+      foreach ($headers as $h) { $line[] = $row[$h] ?? ''; }
+      fputcsv($f, $line, ';');
     }
-}
-if (!function_exists('next_order_id_for_table')) {
-    function next_order_id_for_table($table_code) {
-        $safe = preg_replace('/[^A-Za-z0-9_-]/', '', (string)$table_code);
-        $seqDir = DATA_DIR . '/seq';
-        if (!is_dir($seqDir)) { @mkdir($seqDir, 0775, true); }
-        $seqFile = $seqDir . '/orders_' . $safe . '.seq';
-
-        $fh = fopen($seqFile, 'c+'); // create + read/write
-        if (!$fh) {
-            // Fallback auf Zeitstempel, wenn Sequenz nicht schreibbar
-            return $safe . '-' . time();
-        }
-        flock($fh, LOCK_EX);
-        $raw = stream_get_contents($fh);
-        $n   = intval(trim((string)$raw)) ?: 0;
-        $n++;
-        ftruncate($fh, 0);
-        rewind($fh);
-        fwrite($fh, (string)$n);
-        fflush($fh);
-        flock($fh, LOCK_UN);
-        fclose($fh);
-
-        return $safe . '-' . $n;
-    }
+    fclose($f);
+    return @rename($tmp, $file);
+  }
 }
 
-/* ----------------------------------------------------------------------
-   Request einlesen & validieren
----------------------------------------------------------------------- */
-$raw = file_get_contents('php://input');
-$input = json_decode($raw, true);
-if (!is_array($input)) $input = [];
+// Lock für Bestellungen (eine gemeinsame Sperre für beide CSVs)
+function orders_lock() {
+  $lf = DATA_DIR . '/lock_orders.lock';
+  @mkdir(dirname($lf), 0775, true);
+  $h = fopen($lf, 'c'); if (!$h) return false;
+  flock($h, LOCK_EX);
+  return $h;
+}
+function orders_unlock($h) { if ($h) { flock($h, LOCK_UN); fclose($h); } }
 
-$table_code = $input['table_code'] ?? '';
-$items      = $input['items'] ?? [];
-
-if (!$table_code || !is_array($items) || count($items) === 0) {
-    http_response_code(400);
-    echo json_encode(['error' => 'bad request: table_code and items required']);
-    exit;
+// ID-Generator: Tischcode + sicherer Suffix; garantiert einzigartig innerhalb der CSV
+function generate_order_id(string $tableCode, array $existingIds): string {
+  // Kompakter sicherer Suffix: 6–8 Hex-Zeichen aus random_bytes
+  for ($i=0; $i<500; $i++) {
+    $suffix = bin2hex(random_bytes(3)); // 6 Hex-Zeichen
+    $id = $tableCode . '-' . $suffix;
+    if (empty($existingIds[$id])) return $id;
+  }
+  // Fallback, extrem unwahrscheinlich
+  return $tableCode . '-' . bin2hex(random_bytes(6));
 }
 
-/* ----------------------------------------------------------------------
-   Tisch & Menü prüfen
----------------------------------------------------------------------- */
+// Request einlesen
+$in = json_decode(file_get_contents('php://input') ?: '[]', true);
+if (!is_array($in)) $in = [];
+
+$table_code = isset($in['table_code']) ? trim((string)$in['table_code']) : '';
+$items      = isset($in['items']) && is_array($in['items']) ? $in['items'] : [];
+
+if ($table_code === '' || empty($items)) {
+  http_response_code(400);
+  echo json_encode(['ok'=>false, 'error'=>'invalid request']); exit;
+}
+
+// Dateien & Header sicherstellen
+if (!is_dir(DATA_DIR)) @mkdir(DATA_DIR, 0775, true);
+if (!is_file(CSV_ORDERS))       csv_write_all(CSV_ORDERS,       ['id','table_code','status','created_at'], []);
+if (!is_file(CSV_ORDER_ITEMS))  csv_write_all(CSV_ORDER_ITEMS,  ['order_id','item_id','qty','notes'],      []);
+if (!is_file(CSV_TABLES))       csv_write_all(CSV_TABLES,       ['code','name'],                            []);
+if (!is_file(CSV_MENU))         csv_write_all(CSV_MENU,         ['id','name','price_cents','category','active'], []);
+
+// Validierungen: Tisch & Menü
 $tables = csv_read_assoc(CSV_TABLES);
-$tbl = null;
-foreach ($tables as $t) {
-    if (($t['code'] ?? '') === $table_code) { $tbl = $t; break; }
-}
-if (!$tbl) {
-    http_response_code(400);
-    echo json_encode(['error' => 'invalid table']);
-    exit;
+$knownTable = false;
+foreach ($tables as $t) { if (($t['code'] ?? '') === $table_code) { $knownTable = true; break; } }
+if (!$knownTable) {
+  http_response_code(400);
+  echo json_encode(['ok'=>false, 'error'=>'unknown_table']); exit;
 }
 
 $menu = csv_read_assoc(CSV_MENU);
-$menuMap = [];
+$menuActive = [];
 foreach ($menu as $m) {
-    if (($m['active'] ?? '') === '1') {
-        // Map nach ID (als String!)
-        $menuMap[(string)$m['id']] = $m;
-    }
+  if (($m['active'] ?? '') === '1') {
+    $menuActive[(int)($m['id'] ?? 0)] = true;
+  }
 }
 
-/* ----------------------------------------------------------------------
-   Atomare Operation pro Tisch: Lock -> ID -> Kopf & Positionen schreiben
----------------------------------------------------------------------- */
-$lock = ts_lock_table($table_code);
-if (!$lock) {
-    http_response_code(500);
-    echo json_encode(['error' => 'lock failed']);
-    exit;
+// Items säubern/prüfen
+$clean = [];
+foreach ($items as $it) {
+  $iid  = (int)($it['item_id'] ?? 0);
+  $qty  = (int)($it['qty'] ?? 0);
+  $note = isset($it['notes']) ? (string)$it['notes'] : '';
+  if ($iid <= 0 || $qty <= 0) continue;
+  if (empty($menuActive[$iid])) continue; // nur aktive Artikel
+  $clean[] = ['item_id'=>$iid, 'qty'=>$qty, 'notes'=>$note];
+}
+if (empty($clean)) {
+  http_response_code(400);
+  echo json_encode(['ok'=>false, 'error'=>'no_valid_items']); exit;
 }
 
 try {
-    // Fortlaufende ID nur für diesen Tisch
-    $order_id = next_order_id_for_table($table_code);
+  $lock = orders_lock();
 
-    // Bestellkopf
-    $ok1 = csv_append_assoc(CSV_ORDERS, ['id','table_code','status','created_at'], [
-        'id'         => $order_id,                 // z.B. AB12CD34-17
-        'table_code' => $table_code,
-        'status'     => 'open',
-        'created_at' => date('Y-m-d H:i:s'),
-    ]);
+  // IDs einlesen
+  $existing = csv_read_assoc(CSV_ORDERS);
+  $idSet = [];
+  foreach ($existing as $o) { if (!empty($o['id'])) $idSet[$o['id']] = true; }
 
-    // Positionen
-    $ok2 = true;
-    foreach ($items as $it) {
-        $item_id = (string)($it['item_id'] ?? '');
-        $qty     = max(1, intval($it['qty'] ?? 1));
-        $notes   = sanitize_text($it['notes'] ?? '');
+  // NEUE ID ERZEUGEN: <TABLE>-<HEX>
+  $order_id = generate_order_id($table_code, $idSet);
 
-        // unbekannte/ inaktive Items überspringen
-        if (!isset($menuMap[$item_id])) continue;
+  // Bestellung in orders.csv anfügen
+  $now = date('Y-m-d H:i:s');
+  $existing[] = [
+    'id'         => $order_id,
+    'table_code' => $table_code,
+    'status'     => 'open',
+    'created_at' => $now,
+  ];
+  if (!csv_write_all(CSV_ORDERS, ['id','table_code','status','created_at'], $existing)) {
+    throw new Exception('write_orders_failed');
+  }
 
-        $ok2 = $ok2 && csv_append_assoc(
-            CSV_ORDER_ITEMS,
-            ['order_id','item_id','qty','notes'],
-            ['order_id' => $order_id, 'item_id' => $item_id, 'qty' => $qty, 'notes' => $notes]
-        );
-    }
+  // Items anfügen (wir lesen, hängen dran, schreiben neu)
+  $existingItems = csv_read_assoc(CSV_ORDER_ITEMS);
+  foreach ($clean as $c) {
+    $existingItems[] = [
+      'order_id' => $order_id,
+      'item_id'  => (string)$c['item_id'],
+      'qty'      => (string)$c['qty'],
+      'notes'    => $c['notes'],
+    ];
+  }
+  if (!csv_write_all(CSV_ORDER_ITEMS, ['order_id','item_id','qty','notes'], $existingItems)) {
+    throw new Exception('write_items_failed');
+  }
 
-    if (!$ok1 || !$ok2) {
-        throw new Exception('write failed');
-    }
+  orders_unlock($lock);
 
-    echo json_encode(['ok' => true, 'order_id' => $order_id]);
+  echo json_encode(['ok'=>true, 'order_id'=>$order_id], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'server error']);
-} finally {
-    ts_unlock($lock);
+  orders_unlock($lock ?? null);
+  http_response_code(500);
+  echo json_encode(['ok'=>false,'error'=>'server_error']); // keine Details nach außen
 }
