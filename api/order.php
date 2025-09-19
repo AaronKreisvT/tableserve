@@ -139,7 +139,7 @@ try {
   $order_id = generate_order_id($table_code, $idSet);
 
   // Bestellung in orders.csv anfügen
-  $now = date('Y-m-d H:i:s');
+  $now = date('d-m-Y H:i');
   $existing[] = [
     'id'         => $order_id,
     'table_code' => $table_code,
