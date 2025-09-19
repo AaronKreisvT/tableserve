@@ -15,6 +15,13 @@ session_set_cookie_params([
 ]);
 session_start();
 
+if (!defined('STAFF_KEY')) {
+  http_response_code(500);
+  header('Content-Type: text/plain; charset=utf-8');
+  echo "Serverfehler: STAFF_KEY ist nicht definiert (config.php?).";
+  exit;
+}
+
 // einfacher Cookie-Login
 if (($_GET['login'] ?? '') === '1') {
   $input = json_decode(file_get_contents('php://input'), true) ?? [];
