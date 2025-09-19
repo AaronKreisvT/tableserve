@@ -1,4 +1,8 @@
 <?php
+// /api/staff_orders.php
+// - POST ?login=1  {key}      -> setzt $_SESSION['staff_authenticated']=true
+// - GET             (auth)    -> liefert offene/aktive Bestellungen als JSON
+
 // Einheitliche Session
 session_name('TSID');
 session_set_cookie_params([
@@ -6,70 +10,80 @@ session_set_cookie_params([
 ]);
 session_start();
 
+// ZUERST zentrale Config+Funktionen laden (kein lokales define von STAFF_KEY!)
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../functions.php';
+
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
+// Safety: STAFF_KEY muss aus config.php kommen
 if (!defined('STAFF_KEY')) {
   http_response_code(500);
-  header('Content-Type: text/plain; charset=utf-8');
-  echo "Serverfehler: STAFF_KEY ist nicht definiert (config.php?).";
-  exit;
+  echo json_encode(['ok'=>false,'error'=>'STAFF_KEY not defined']); exit;
 }
 
-// einfacher Cookie-Login
-if (($_GET['login'] ?? '') === '1') {
-  $input = json_decode(file_get_contents('php://input'), true) ?? [];
-  if (($input['key'] ?? '') !== STAFF_KEY) { http_response_code(401); echo json_encode(['error'=>'bad key']); exit; }
-  setcookie('staff_key', STAFF_KEY, [
-    'httponly'=>true,'samesite'=>'Lax','secure'=>false,'path'=>'/','expires'=>time()+7*24*3600
-  ]);
-  echo json_encode(['ok'=>true]); exit;
+// ---- LOGIN ----
+if (isset($_GET['login'])) {
+  $in  = json_decode(file_get_contents('php://input'), true) ?: [];
+  $key = (string)($in['key'] ?? '');
+  if ($key !== '' && hash_equals((string)STAFF_KEY, $key)) {
+    session_regenerate_id(true);
+    $_SESSION['staff_authenticated'] = true;
+    echo json_encode(['ok'=>true]); exit;
+  }
+  http_response_code(401);
+  echo json_encode(['ok'=>false,'error'=>'invalid']); exit;
 }
-if (($_COOKIE['staff_key'] ?? '') !== STAFF_KEY) { http_response_code(401); echo json_encode(['error'=>'unauthorized']); exit; }
 
-// ... nach erfolgreicher Key-Prüfung:
-session_regenerate_id(true);
-$_SESSION['staff_authenticated'] = true;
-http_response_code(200);
-header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store');
-echo json_encode(['ok'=>true]);
-exit;
+// ---- AUTH GUARD für die Liste ----
+if (empty($_SESSION['staff_authenticated']) || $_SESSION['staff_authenticated'] !== true) {
+  http_response_code(403);
+  echo json_encode(['ok'=>false,'error'=>'forbidden']); exit;
+}
+
+// ---- LISTE DER BESTELLUNGEN (vereinfachte, robuste Variante) ----
+// Erwartete CSVs (kommen aus functions.php/ config.php):
+// CSV_ORDERS: id;table_code;status;created_at
+// CSV_ORDER_ITEMS: order_id;item_id;qty;notes
+// CSV_MENU: id;name;price_cents;category;active
+// CSV_TABLES: code;name
 
 $orders = csv_read_assoc(CSV_ORDERS);
-$orders = array_values(array_filter($orders, fn($o)=> in_array($o['status'], ['open','in_prep'])));
-usort($orders, fn($a,$b)=>strcmp($a['created_at'],$b['created_at']));
-
+$items  = csv_read_assoc(CSV_ORDER_ITEMS);
+$menu   = csv_read_assoc(CSV_MENU);
 $tables = csv_read_assoc(CSV_TABLES);
-$tMap = []; foreach ($tables as $t) $tMap[$t['code']] = $t['name'];
 
-$menu = csv_read_assoc(CSV_MENU);
-$mMap = []; foreach ($menu as $m) $mMap[$m['id']] = $m;
+$menuById = [];
+foreach ($menu as $m) { $menuById[(int)($m['id']??0)] = $m; }
+$tblByCode = [];
+foreach ($tables as $t) { $tblByCode[$t['code'] ?? ''] = $t['name'] ?? ''; }
 
-$items = csv_read_assoc(CSV_ORDER_ITEMS);
-$byOrder = [];
-foreach ($items as $it) $byOrder[$it['order_id']][] = $it;
-
+// nur relevante Stati anzeigen
+$validStatuses = ['open','in_prep']; // „served“ & „cancelled“ sind erledigt
 $out = [];
 foreach ($orders as $o) {
+  $st = $o['status'] ?? 'open';
+  if (!in_array($st, $validStatuses, true)) continue;
+
+  $oid = (string)($o['id'] ?? '');
   $arr = [];
-  foreach ($byOrder[$o['id']] ?? [] as $line) {
-    $def = $mMap[$line['item_id']] ?? null;
+  foreach ($items as $it) {
+    if ((string)($it['order_id'] ?? '') !== $oid) continue;
+    $def = $menuById[(int)($it['item_id'] ?? 0)] ?? null;
     $arr[] = [
-      'qty' => (int)$line['qty'],
-      'name'=> $def ? $def['name'] : ('#'.$line['item_id']),
-      'notes'=> $line['notes'] ?? ''
+      'qty'   => (int)($it['qty'] ?? 0),
+      'name'  => $def ? ($def['name'] ?? ('#'.($it['item_id'] ?? ''))) : ('#'.($it['item_id'] ?? '')),
+      'notes' => (string)($it['notes'] ?? '')
     ];
   }
   $out[] = [
-    'id'=>(int)$o['id'],
-    'status'=>$o['status'],
-    'created_at'=>$o['created_at'],
-    'table_name'=>$tMap[$o['table_code']] ?? $o['table_code'],
-    'items'=>$arr
+    'id'         => (int)$oid,
+    'status'     => $st,
+    'created_at' => $o['created_at'] ?? '',
+    'table_name' => $tblByCode[$o['table_code'] ?? ''] ?: ($o['table_code'] ?? ''),
+    'items'      => $arr
   ];
 }
-echo json_encode(['orders'=>$out]);
-Y
+
+echo json_encode(['ok'=>true,'orders'=>$out], JSON_UNESCAPED_UNICODE);
