@@ -1,173 +1,131 @@
 <?php
-// /api/tables.php — CRUD Tische (CSV: code;name)
+// /api/tables.php — DIAGNOSTIK-VERSION (vorübergehend)
+// Fängt alle PHP-Fehler ab und gibt sie als JSON aus, damit 500 nicht stumm bleibt.
 
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
+
+error_reporting(E_ALL);
+ini_set('display_errors','0');
+
+$errors = [];
+set_error_handler(function($no,$str,$file,$line) use (&$errors){
+  $errors[] = "PHP$no: $str @ $file:$line";
+});
+register_shutdown_function(function() use (&$errors){
+  $e = error_get_last();
+  if ($e) {
+    // Wenn es einen Fatal gab und noch nichts gesendet wurde: JSON ausgeben
+    header_remove('Content-Type'); // setze erneut
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(500);
+    echo json_encode([
+      'ok'=>false,
+      'fatal'=>[
+        'type'=>$e['type'],
+        'message'=>$e['message'],
+        'file'=>$e['file'],
+        'line'=>$e['line'],
+      ],
+      'errors'=>$errors,
+      'where'=>'shutdown'
+    ], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
+  }
+});
+
+// ---- Session + Auth (minimal, ohne Includes) ----
 session_name('TSID');
 session_set_cookie_params([
   'lifetime'=>0,'path'=>'/','domain'=>'','secure'=>true,'httponly'=>true,'samesite'=>'Lax'
 ]);
 session_start();
 
-require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../functions.php';
-
-header('Content-Type: application/json; charset=utf-8');
-
-// ---- Fallback-Konstanten, falls functions.php sie nicht setzt
-if (!defined('DATA_DIR'))   define('DATA_DIR',   __DIR__ . '/../data');
-if (!defined('CSV_TABLES')) define('CSV_TABLES', DATA_DIR . '/tables.csv');
-
-// ---- CSV-Fallbacks (nur falls in functions.php nicht vorhanden)
-if (!function_exists('csv_read_assoc')) {
-  function csv_read_assoc($file) {
-    if (!is_file($file)) return [];
-    $f = fopen($file, 'r'); if(!$f) return [];
-    $rows = [];
-    $headers = fgetcsv($f, 0, ';');
-    if (!$headers) { fclose($f); return []; }
-    while(($r = fgetcsv($f, 0, ';')) !== false){
-      $row = [];
-      foreach ($headers as $i => $h) $row[$h] = $r[$i] ?? '';
-      $rows[] = $row;
-    }
-    fclose($f);
-    return $rows;
-  }
-}
-if (!function_exists('csv_write_all')) {
-  function csv_write_all($file, $headers, $rows) {
-    @mkdir(dirname($file), 0775, true);
-    $tmp = $file . '.tmp';
-    $f = fopen($tmp, 'w');
-    if (!$f) return false;
-    fputcsv($f, $headers, ';');
-    foreach ($rows as $row) {
-      $line = [];
-      foreach ($headers as $h) { $line[] = $row[$h] ?? ''; }
-      fputcsv($f, $line, ';');
-    }
-    fclose($f);
-    return rename($tmp, $file);
-  }
-}
-
-// ---- Zugriff: Admin ODER Staff
 $okStaff = !empty($_SESSION['staff_authenticated']) && $_SESSION['staff_authenticated'] === true;
 $okAdmin = !empty($_SESSION['admin_authenticated']) && $_SESSION['admin_authenticated'] === true;
+
+// Wenn du hier 403 bekommst, stimmt die Session/Domäne/HTTPS nicht.
 if (!$okStaff && !$okAdmin) {
   http_response_code(403);
-  echo json_encode(['ok'=>false,'error'=>'forbidden']); exit;
+  echo json_encode(['ok'=>false,'error'=>'forbidden','session'=>$_SESSION], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
+  exit;
 }
 
-// ---- Helpers
-function tables_lock() {
-  $lf = DATA_DIR . '/lock_tables.lock';
-  @mkdir(dirname($lf), 0775, true);
-  $h = fopen($lf, 'c'); if(!$h) return false;
-  flock($h, LOCK_EX);
-  return $h;
-}
-function tables_unlock($h){ if($h){ flock($h, LOCK_UN); fclose($h); } }
-function sanitize_text($s){ $s = trim((string)$s); return preg_replace('/[\r\n]+/',' ', $s); }
-function random_code($len=8){ $a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; $o=''; for($i=0;$i<$len;$i++) $o.=$a[random_int(0,strlen($a)-1)]; return $o; }
-function unique_code($rows){
-  $set=[]; foreach($rows as $r){ $set[$r['code']??'']=true; }
-  for($i=0;$i<500;$i++){ $c=random_code(8); if(empty($set[$c])) return $c; }
-  return 'T'.dechex(time());
-}
+// ---- Konstanten lokal bestimmen (keine Abhängigkeit zu functions.php) ----
+$DATA_DIR   = realpath(__DIR__ . '/../data') ?: (__DIR__ . '/../data');
+$CSV_TABLES = $DATA_DIR . '/tables.csv';
 
-// ---- Datei/Headers sicherstellen (code;name)
-if (!is_dir(DATA_DIR)) @mkdir(DATA_DIR, 0775, true);
-if (!is_file(CSV_TABLES)) csv_write_all(CSV_TABLES, ['code','name'], []);
-
-// ---- Request
-$method  = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$payload = json_decode(file_get_contents('php://input'), true);
-if (!is_array($payload)) $payload = [];
+// ---- Nur GET diagnostizieren (POST/PATCH/DELETE weglassen, um Fehler einzugrenzen) ----
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if ($method !== 'GET') {
+  echo json_encode(['ok'=>true,'note'=>'diagnostic build only supports GET right now'], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
+  exit;
+}
 
 try {
-  if ($method === 'GET') {
-    $lk   = tables_lock();
-    $rows = csv_read_assoc(CSV_TABLES);
-    tables_unlock($lk);
+  // Vorab-Infos
+  $diag = [
+    'php_version'=>PHP_VERSION,
+    'sapi'=>PHP_SAPI,
+    'data_dir'=>$DATA_DIR,
+    'csv_tables'=>$CSV_TABLES,
+    'is_dir(DATA_DIR)'=>is_dir($DATA_DIR),
+    'is_file(CSV_TABLES)'=>is_file($CSV_TABLES),
+    'is_readable(CSV_TABLES)'=>is_file($CSV_TABLES) ? is_readable($CSV_TABLES) : null,
+    'filesize(CSV_TABLES)'=>is_file($CSV_TABLES) ? filesize($CSV_TABLES) : null,
+    'auth'=>['staff'=>$okStaff,'admin'=>$okAdmin],
+  ];
 
-    $out = [];
-    foreach ($rows as $r) {
-      $out[] = [
-        'code' => $r['code'] ?? ($r['Code'] ?? ''),
-        'name' => $r['name'] ?? ($r['Name'] ?? ''),
-      ];
-    }
-    echo json_encode(['ok'=>true,'tables'=>$out], JSON_UNESCAPED_UNICODE);
+  if (!is_file($CSV_TABLES)) {
+    echo json_encode(['ok'=>true,'tables'=>[], 'diag'=>$diag, 'errors'=>$errors], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
     exit;
   }
 
-  if ($method === 'POST') {
-    $name = sanitize_text($payload['name'] ?? '');
-    if ($name===''){ http_response_code(400); echo json_encode(['ok'=>false,'error'=>'name required']); exit; }
-
-    $lk   = tables_lock();
-    $rows = csv_read_assoc(CSV_TABLES);
-    $norm = [];
-    foreach ($rows as $r) { $norm[] = ['code'=>$r['code'] ?? '', 'name'=>$r['name'] ?? '']; }
-    $code = unique_code($norm);
-    $norm[] = ['code'=>$code, 'name'=>$name];
-    $ok = csv_write_all(CSV_TABLES, ['code','name'], $norm);
-    tables_unlock($lk);
-
-    if(!$ok) throw new Exception('write failed');
-    echo json_encode(['ok'=>true,'table'=>['code'=>$code,'name'=>$name]]);
+  $fh = fopen($CSV_TABLES, 'r');
+  if (!$fh) {
+    http_response_code(500);
+    echo json_encode(['ok'=>false,'error'=>'open failed','diag'=>$diag,'errors'=>$errors], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
     exit;
   }
 
-  if ($method === 'PATCH') {
-    $code = sanitize_text($payload['code'] ?? '');
-    $name = sanitize_text($payload['name'] ?? '');
-    if ($code==='' || $name===''){ http_response_code(400); echo json_encode(['ok'=>false,'error'=>'code and name required']); exit; }
-
-    $lk   = tables_lock();
-    $rows = csv_read_assoc(CSV_TABLES);
-    $changed=false; $norm=[];
-    foreach ($rows as $r) {
-      $c = $r['code'] ?? ($r['Code'] ?? '');
-      $n = $r['name'] ?? ($r['Name'] ?? '');
-      if ($c === $code) { $n = $name; $changed = true; }
-      $norm[] = ['code'=>$c,'name'=>$n];
-    }
-    $ok = $changed ? csv_write_all(CSV_TABLES, ['code','name'], $norm) : false;
-    tables_unlock($lk);
-
-    if(!$changed){ http_response_code(404); echo json_encode(['ok'=>false,'error'=>'not found']); exit; }
-    if(!$ok) throw new Exception('write failed');
-    echo json_encode(['ok'=>true]);
+  $hdr = fgetcsv($fh, 0, ';');
+  if ($hdr === false) {
+    fclose($fh);
+    echo json_encode(['ok'=>true,'tables'=>[], 'diag'=>$diag, 'errors'=>$errors], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
     exit;
   }
 
-  if ($method === 'DELETE') {
-    $code = sanitize_text($payload['code'] ?? '');
-    if ($code===''){ http_response_code(400); echo json_encode(['ok'=>false,'error'=>'code required']); exit; }
+  $idx = array_change_key_case(array_flip($hdr), CASE_LOWER);
+  $iCode = $idx['code'] ?? null;
+  $iName = $idx['name'] ?? null;
 
-    $lk   = tables_lock();
-    $rows = csv_read_assoc(CSV_TABLES);
-    $found=false; $norm=[];
-    foreach ($rows as $r) {
-      $c = $r['code'] ?? ($r['Code'] ?? '');
-      $n = $r['name'] ?? ($r['Name'] ?? '');
-      if ($c === $code) { $found = true; continue; }
-      $norm[] = ['code'=>$c,'name'=>$n];
-    }
-    $ok = csv_write_all(CSV_TABLES, ['code','name'], $norm);
-    tables_unlock($lk);
-
-    if(!$found){ http_response_code(404); echo json_encode(['ok'=>false,'error'=>'not found']); exit; }
-    if(!$ok) throw new Exception('write failed');
-    echo json_encode(['ok'=>true]);
-    exit;
+  $out = [];
+  while (($r = fgetcsv($fh, 0, ';')) !== false) {
+    $out[] = [
+      'code' => $iCode !== null ? ($r[$iCode] ?? '') : ($r[0] ?? ''),
+      'name' => $iName !== null ? ($r[$iName] ?? '') : ($r[1] ?? ''),
+    ];
   }
+  fclose($fh);
 
-  http_response_code(405);
-  echo json_encode(['ok'=>false,'error'=>'method not allowed']);
+  echo json_encode([
+    'ok'=>true,
+    'tables'=>$out,
+    'diag'=>$diag,
+    'errors'=>$errors
+  ], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
+  exit;
+
 } catch (Throwable $e) {
-  // Keine Fehlerdetails nach außen
   http_response_code(500);
-  echo json_encode(['ok'=>false,'error'=>'server error']);
+  echo json_encode([
+    'ok'=>false,
+    'thrown'=>[
+      'class'=>get_class($e),
+      'message'=>$e->getMessage(),
+      'file'=>$e->getFile(),
+      'line'=>$e->getLine(),
+    ],
+    'errors'=>$errors
+  ], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
+  exit;
 }
