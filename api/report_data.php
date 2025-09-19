@@ -1,7 +1,8 @@
 <?php
 // /api/report_data.php — Aggregierte Auswertung je Getränk
-// GET-Parameter (optional): from=YYYY-MM-DD, to=YYYY-MM-DD
-// Antwort: { ok:true, period:"YYYY-MM-DD bis YYYY-MM-DD", items:[{item_id,name,category,total_qty}] }
+// Nur Bestellungen mit STATUS = 'served'
+// GET: from=YYYY-MM-DD, to=YYYY-MM-DD (optional; default=heute)
+// RESP: { ok:true, period:"dd.mm.yyyy bis dd.mm.yyyy", items:[{item_id,name,category,total_qty}] }
 
 session_name('TSID');
 session_set_cookie_params([
@@ -43,40 +44,29 @@ if (!function_exists('csv_read_assoc')) {
   }
 }
 
-// Zeitraum ermitteln (default = heute)
+// Zeitraum (default heute)
 $from = isset($_GET['from']) ? trim((string)$_GET['from']) : '';
 $to   = isset($_GET['to'])   ? trim((string)$_GET['to'])   : '';
 
 $now = new DateTime('now');
-if ($from === '' && $to === '') {
-  $from = $now->format('Y-m-d');
-  $to   = $from;
-}
+if ($from === '' && $to === '') { $from = $now->format('Y-m-d'); $to = $from; }
 if ($from !== '' && $to === '') $to = $from;
-if ($to   !== '' && $from === '') $from = $to;
+if ($to !== '' && $from === '') $from = $to;
 
-// Start/Ende Timestamps bauen
-$start = strtotime($from . ' 00:00:00');
-$end   = strtotime($to   . ' 23:59:59');
-if ($start === false || $end === false) {
-  http_response_code(400);
-  echo json_encode(['ok'=>false,'error'=>'bad period']); exit;
-}
+$start = strtotime($from.' 00:00:00');
+$end   = strtotime($to  .' 23:59:59');
+if ($start === false || $end === false) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'bad period']); exit; }
 
-// created_at tolerant parsen
+// created_at tolerant parsen (unterstützt: d-m-Y H:i, Y-m-d H:i:s, Y-m-d H:i)
 function ts_parse_created_at(?string $s): ?int {
   if (!$s) return null;
   $s = trim($s);
-  // 1) d-m-Y H:i (neues Format)
   $dt = DateTime::createFromFormat('d-m-Y H:i', $s);
-  if ($dt instanceof DateTime) return $dt->getTimestamp();
-  // 2) Y-m-d H:i:s (altes Format)
+  if ($dt) return $dt->getTimestamp();
   $dt = DateTime::createFromFormat('Y-m-d H:i:s', $s);
-  if ($dt instanceof DateTime) return $dt->getTimestamp();
-  // 3) Y-m-d H:i (falls Sekunden fehlten)
+  if ($dt) return $dt->getTimestamp();
   $dt = DateTime::createFromFormat('Y-m-d H:i', $s);
-  if ($dt instanceof DateTime) return $dt->getTimestamp();
-  // 4) Fallback: strtotime (kann schätzen)
+  if ($dt) return $dt->getTimestamp();
   $ts = strtotime($s);
   return $ts === false ? null : $ts;
 }
@@ -86,31 +76,32 @@ $orders = csv_read_assoc(CSV_ORDERS);
 $items  = csv_read_assoc(CSV_ORDER_ITEMS);
 $menu   = csv_read_assoc(CSV_MENU);
 
-// Map Menü
-$menuMap = []; // id => ['name','category']
+// Menü-Map
+$menuMap = [];
 foreach ($menu as $m) {
-  $id  = (int)($m['id'] ?? 0);
+  $id = (int)($m['id'] ?? 0);
   if ($id <= 0) continue;
   $menuMap[$id] = [
     'name'     => $m['name'] ?? ('#'.$id),
-    'category' => $m['category'] ?? ''
+    'category' => $m['category'] ?? '',
   ];
 }
 
-// Erlaubte Stati (alles außer "cancelled")
-$ignore = ['cancelled'];
+// *** NEU: Nur SERVED ***
+$includeStatuses = ['served'];
 
 // Filter passende Order-IDs im Zeitraum
 $allowedOrderIds = [];
 foreach ($orders as $o) {
   $st = (string)($o['status'] ?? 'open');
-  if (in_array($st, $ignore, true)) continue;
+  if (!in_array($st, $includeStatuses, true)) continue;
 
   $ts = ts_parse_created_at($o['created_at'] ?? '');
   if ($ts === null) continue;
   if ($ts < $start || $ts > $end) continue;
 
-  $allowedOrderIds[(string)($o['id'] ?? '')] = true;
+  $oid = (string)($o['id'] ?? '');
+  if ($oid !== '') $allowedOrderIds[$oid] = true;
 }
 
 // Aggregation
@@ -127,7 +118,7 @@ foreach ($items as $it) {
   $agg[$iid] += $qty;
 }
 
-// Ausgabe vorbereiten
+// Ausgabe
 $out = [];
 foreach ($agg as $iid => $qty) {
   $def = $menuMap[$iid] ?? ['name'=>'#'.$iid, 'category'=>''];
@@ -139,7 +130,7 @@ foreach ($agg as $iid => $qty) {
   ];
 }
 
-// sortiere im Backend (Kategorie, dann Name)
+// Sortierung: Kategorie, dann Name
 usort($out, function($a,$b){
   $c = strcmp($a['category'] ?? '', $b['category'] ?? '');
   if ($c !== 0) return $c;
