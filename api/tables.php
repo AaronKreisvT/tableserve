@@ -206,3 +206,15 @@ try {
   http_response_code(500);
   echo json_encode(['ok'=>false,'error'=>'server error']);
 }
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+  $rows = is_file(CSV_TABLES) ? csv_read_assoc(CSV_TABLES) : [];
+  $out = [];
+  foreach ($rows as $r) {
+    $out[] = [
+      'code' => $r['code'] ?? ($r['Code'] ?? ''),
+      'name' => $r['name'] ?? ($r['Name'] ?? ''),
+    ];
+  }
+  echo json_encode(['ok'=>true,'tables'=>$out], JSON_UNESCAPED_UNICODE); exit;
+}
