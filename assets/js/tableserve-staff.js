@@ -1,194 +1,222 @@
-async function checkLoginStatus() {
-  try {
-    const r = await fetch('/api/staff_orders.php', {
-      credentials: 'same-origin',
-      headers: { 'Accept': 'application/json' }
-    });
-    if (!r.ok) return false;
-    const j = await r.json();
-    // wenn Response.ok === true, ist man eingeloggt
-    return j.ok === true;
-  } catch { return false; }
-}
+// /assets/js/tableserve-staff.js
+// Staff-Seite: Login, Bestell-Board, Status setzen, PDF-Auswertung (nur eingeloggt)
 
-// Staff-Seite: Login, Bestell-Board (kein Admin/CRUD mehr)
-document.addEventListener('DOMContentLoaded', () => {
-  // aktiver Tab markieren
-  const active = document.querySelector('.tabs a[href="/staff.html"]') || document.querySelector('.tabs a[data-active="staff"]');
-  if (active) active.classList.add('active');
+(() => {
+  // ---------- Helpers ----------
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-  const y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
-
-  let timer = null;
-
-  // -------- Login --------
-  const loginForm = document.getElementById('loginForm');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault(); // kein ?key=... in URL
-      const key = (document.getElementById('key')?.value || '').trim();
-
-      const msg = document.getElementById('loginMsg');
-      if (msg) msg.textContent = 'Anmeldung...';
-
-      try {
-        const r = await fetch('/api/staff_orders.php?login=1', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin', // Session-Cookie mitsenden
-          body: JSON.stringify({ key })
-        });
-
-        if (!r.ok) {
-          if (msg) msg.textContent = 'Falscher Key.';
-          return;
-        }
-
-        if (msg) msg.textContent = 'Angemeldet.';
-        start(); // Polling starten
-      } catch {
-        if (msg) msg.textContent = 'Netzwerkfehler.';
-      }
-    });
-  }
-
-  // -------- Bestell-Board --------
-  async function fetchOrders(){
-    const r = await fetch('/api/staff_orders.php', {
-      headers: { 'Accept': 'application/json' },
-      credentials: 'same-origin'
-    });
-    if (!r.ok) return [];
-    const data = await r.json();
-    return Array.isArray(data.orders) ? data.orders : [];
-  }
-
-  function renderOrders(orders){
-    const box = document.getElementById('orders'); if (!box) return;
-    box.innerHTML = '';
-    if (orders.length === 0) {
-      box.innerHTML = "<p class='muted'>Keine offenen Bestellungen.</p>";
-      return;
+  const fmt = {
+    euro(cents) {
+      const n = (Number(cents) || 0) / 100;
+      return n.toFixed(2).replace('.', ',') + ' €';
     }
+  };
 
-    for (const o of orders){
-      const ul = (o.items || []).map(it =>
-        `<li>${it.qty}× ${it.name}${it.notes ? ` <span class="muted">(${it.notes})</span>` : ''}</li>`
-      ).join('');
-
-      const div = document.createElement('div'); div.className = 'card';
-      div.innerHTML = `
-        <div class="row"><strong>${o.table_name || o.table_code || 'Tisch'}</strong><span class="pill">${o.status}</span></div>
-        <div class="small muted">${o.created_at || ''}</div>
-        <ul>${ul}</ul>
-        <div class="row">
-          <button data-status='in_prep'  data-id='${o.id}'>In Zubereitung</button>
-          <button data-status='served'   data-id='${o.id}'>Serviert</button>
-          <button data-status='cancelled' data-id='${o.id}'>Storno</button>
-        </div>`;
-      box.appendChild(div);
-    }
-
-    box.querySelectorAll('button[data-status]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await fetch('/api/set_status.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ id: btn.dataset.id, status: btn.dataset.status })
-        });
-        tick();
-      });
-    });
+  function setVisible(el, visible) {
+    if (!el) return;
+    el.style.display = visible ? '' : 'none';
   }
 
-  async function tick(){ renderOrders(await fetchOrders()); }
-  function start(){ if (timer) clearInterval(timer); tick(); timer = setInterval(tick, 4000); }
-});
-// -------- PDF Auswertung (Heute) --------
-document.addEventListener('DOMContentLoaded', async () => {
-  const btn = document.getElementById('btnReportToday');
-  if (!btn) return;
-
-  const loggedIn = await checkLoginStatus();
-  if (loggedIn) {
-    btn.style.display = 'inline-block';
-  } else {
-    btn.style.display = 'none';
+  function setReportButtonVisible(visible) {
+    const btn = $('#btnReportToday');
+    if (!btn) return;
+    setVisible(btn, visible);
   }
 
-  btn.addEventListener('click', async () => {
-    if (!loggedIn) {
-      alert('Bitte zuerst einloggen!');
-      return;
-    }
+  async function checkLoginStatus() {
     try {
-      // Heutiges Datum (lokal) im Format YYYY-MM-DD
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      const from = `${yyyy}-${mm}-${dd}`;
-      const to   = `${yyyy}-${mm}-${dd}`;
+      // GET liefert bei Erfolg eine Orderliste (ok:true)
+      const r = await fetch('/api/staff_orders.php', {
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!r.ok) return false;
+      const j = await r.json();
+      return j && j.ok === true;
+    } catch {
+      return false;
+    }
+  }
 
-      // Daten vom Server holen
+  async function apiLoginStaff(key) {
+    const r = await fetch('/api/staff_orders.php?login=1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ key })
+    });
+    if (!r.ok) throw new Error('login failed ' + r.status);
+    const j = await r.json();
+    if (!j.ok) throw new Error('invalid');
+    return true;
+  }
+
+  async function loadOrders() {
+    const cont = $('#ordersList') || $('#orders'); // fallback id
+    const msg = $('#ordersMsg');
+    if (msg) msg.textContent = 'Lade…';
+    try {
+      const r = await fetch('/api/staff_orders.php', {
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.json();
+      if (!data.ok) throw new Error('not ok');
+
+      const orders = Array.isArray(data.orders) ? data.orders : [];
+      // Sortierung: älteste zuerst
+      orders.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+
+      // Render
+      if (cont) cont.innerHTML = orders.length ? renderOrders(orders) : '<p class="muted">Aktuell keine offenen Bestellungen.</p>';
+      if (msg) msg.textContent = '';
+
+      // Buttons binden
+      $$('.js-set-status').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.currentTarget.dataset.id;
+          const st = e.currentTarget.dataset.status;
+          e.currentTarget.disabled = true;
+          try {
+            await setStatus(id, st);
+            await loadOrders();
+          } catch (err) {
+            console.error(err);
+            alert('Konnte Status nicht setzen.');
+          } finally {
+            e.currentTarget.disabled = false;
+          }
+        });
+      });
+    } catch (err) {
+      console.error(err);
+      if (cont) cont.innerHTML = '';
+      if (msg) msg.textContent = 'Fehler beim Laden.';
+    }
+  }
+
+  function renderOrders(orders) {
+    // einfache Karten
+    return orders.map(o => {
+      const items = Array.isArray(o.items) ? o.items : [];
+      const lines = items.map(it => {
+        const note = it.notes ? ` <span class="muted">(${escapeHtml(it.notes)})</span>` : '';
+        return `<li>${Number(it.qty) || 0}× ${escapeHtml(it.name || '')}${note}</li>`;
+      }).join('');
+      const badge = statusBadge(o.status);
+      return `
+        <div class="card" data-order="${escapeAttr(o.id)}">
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <div>
+              <strong>${escapeHtml(o.table_name || '')}</strong>
+              <span class="muted"> • ${escapeHtml(o.created_at || '')}</span>
+              <div class="muted" style="margin-top:2px">ID: ${escapeHtml(o.id || '')}</div>
+            </div>
+            <div>${badge}</div>
+          </div>
+          <ul style="margin:10px 0 12px 18px">${lines}</ul>
+          <div class="row" style="gap:6px; flex-wrap: wrap">
+            <button class="js-set-status" data-id="${escapeAttr(o.id || '')}" data-status="in_prep">In Vorbereitung</button>
+            <button class="js-set-status" data-id="${escapeAttr(o.id || '')}" data-status="served">Serviert</button>
+            <button class="js-set-status" data-id="${escapeAttr(o.id || '')}" data-status="cancelled">Storniert</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function statusBadge(st) {
+    const label = (st || '').toLowerCase();
+    const colors = {
+      open: '#e0f2fe',
+      in_prep: '#fef9c3',
+      served: '#dcfce7',
+      cancelled: '#fee2e2'
+    };
+    const txt = {
+      open: 'Offen',
+      in_prep: 'In Vorbereitung',
+      served: 'Serviert',
+      cancelled: 'Storniert'
+    }[label] || label;
+    const bg = colors[label] || '#eee';
+    return `<span class="badge" style="background:${bg}; padding:3px 8px; border-radius:8px">${escapeHtml(txt)}</span>`;
+  }
+
+  async function setStatus(id, status) {
+    const r = await fetch('/api/set_status.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ id, status })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (!j.ok) throw new Error('not ok');
+    return true;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+  function escapeAttr(s) { return escapeHtml(s).replaceAll('"', '&quot;'); }
+
+  // ---------- PDF Auswertung (Heute) ----------
+  async function handleReportToday() {
+    // Nur wenn jsPDF geladen ist
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) { alert('jsPDF konnte nicht geladen werden.'); return; }
+
+    // Zeitraum: heute
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const from = `${yyyy}-${mm}-${dd}`;
+    const to = from;
+
+    try {
       const r = await fetch(`/api/report_data.php?from=${from}&to=${to}`, {
         headers: { 'Accept': 'application/json' },
         credentials: 'same-origin'
       });
-      if (!r.ok) {
-        alert(`Fehler beim Erzeugen der Auswertung (HTTP ${r.status}).`);
-        return;
-      }
+      if (!r.ok) { alert(`Fehler beim Erzeugen der Auswertung (HTTP ${r.status}).`); return; }
       const data = await r.json();
-      if (!data.ok) {
-        alert('Fehler beim Erzeugen der Auswertung.');
-        return;
-      }
+      if (!data.ok) { alert('Fehler beim Erzeugen der Auswertung.'); return; }
 
-      // jsPDF nutzen
-      const { jsPDF } = window.jspdf || {};
-      if (!jsPDF) { alert('jsPDF konnte nicht geladen werden.'); return; }
-
-      const doc = new jsPDF({ unit: 'pt', format: 'a4' }); // 595 x 842pt
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' }); // 595x842pt
       const margin = 48;
-      let x = margin;
-      let y = margin;
+      let x = margin, y = margin;
 
-      const line = (txt, size = 12, dy = 18) => {
-        doc.setFont('Helvetica', 'normal');
+      const line = (txt, size = 12, dy = 18, bold = false) => {
+        doc.setFont('Helvetica', bold ? 'bold' : 'normal');
         doc.setFontSize(size);
         doc.text(txt, x, y);
         y += dy;
         if (y > 842 - margin) { doc.addPage(); y = margin; }
       };
 
-      // Titel + Zeitraum
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(18);
-      doc.text('TableServe – Auswertung', x, y);
-      y += 10;
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(12);
-      const period = data.period ? data.period : `${from} bis ${to}`;
-      doc.text(`Zeitraum: ${period}`, x, y);
-      y += 24;
+      // Titel
+      line('TableServe – Auswertung', 18, 24, true);
+      line(`Zeitraum: ${data.period || (from + ' bis ' + to)}`, 12, 24);
 
-      // Tabelle: Kopf
+      // Kopfzeile
       doc.setFont('Helvetica', 'bold'); doc.setFontSize(12);
       doc.text('Getränk', x, y);
       doc.text('Kategorie', x + 320, y);
       doc.text('Menge', x + 500, y);
-      y += 8;
-      doc.setLineWidth(0.5);
-      doc.line(x, y, 595 - margin, y);
-      y += 14;
+      y += 8; doc.setLineWidth(0.5); doc.line(x, y, 595 - margin, y); y += 14;
 
       // Zeilen
-      doc.setFont('Helvetica', 'normal');
+      doc.setFont('Helvetica', 'normal'); doc.setFontSize(12);
       const items = Array.isArray(data.items) ? data.items : [];
-
-      // Sortierung: Kategorie, dann Name
       items.sort((a, b) => {
         const ca = (a.category || '').localeCompare(b.category || '');
         if (ca !== 0) return ca;
@@ -199,8 +227,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const name = it.name || `#${it.item_id}`;
         const cat  = it.category || '';
         const qty  = String(it.total_qty ?? 0);
-
-        // Zeile zeichnen
         doc.text(name, x, y);
         doc.text(cat,  x + 320, y);
         doc.text(qty,  x + 500, y);
@@ -209,17 +235,92 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       // Summe
-      const sum = items.reduce((s, it) => s + (it.total_qty || 0), 0);
+      const sum = items.reduce((s, it) => s + (Number(it.total_qty) || 0), 0);
       y += 6; doc.line(x, y, 595 - margin, y); y += 18;
       doc.setFont('Helvetica', 'bold');
       doc.text(`Gesamtmenge: ${sum}`, x, y);
 
-      // Dateiname
-      const fname = `tableserve-auswertung-${from}${from !== to ? '_'+to : ''}.pdf`;
+      const fname = `tableserve-auswertung-${from}.pdf`;
       doc.save(fname);
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
       alert('Unerwarteter Fehler bei der PDF-Erzeugung.');
     }
+  }
+
+  // ---------- Init ----------
+  document.addEventListener('DOMContentLoaded', async () => {
+    const loginForm = $('#staffLoginForm');       // <form id="staffLoginForm">
+    const keyInput  = $('#staffKey');             //   <input id="staffKey" ...>
+    const loginBox  = $('#staffLoginBox') || $('#loginSection');
+    const boardBox  = $('#staffBoard')   || $('#boardSection');
+    const btnReport = $('#btnReportToday');
+
+    // Standard: Button verstecken
+    setReportButtonVisible(false);
+
+    // Bereits eingeloggt?
+    const logged = await checkLoginStatus();
+    if (logged) {
+      setVisible(loginBox, false);
+      setVisible(boardBox, true);
+      setReportButtonVisible(true);
+      await loadOrders();
+    } else {
+      setVisible(loginBox, true);
+      setVisible(boardBox, false);
+    }
+
+    // Login-Form: Enter + Submit
+    if (loginForm) {
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const key = (keyInput?.value || '').trim();
+        if (!key) { keyInput?.focus(); return; }
+        // disable während Login
+        const btn = loginForm.querySelector('button[type="submit"]') || loginForm.querySelector('button');
+        if (btn) btn.disabled = true;
+        try {
+          await apiLoginStaff(key);
+          // UI sofort updaten
+          setVisible(loginBox, false);
+          setVisible(boardBox, true);
+          setReportButtonVisible(true);
+          await loadOrders();
+        } catch (err) {
+          console.error(err);
+          alert('Anmeldung fehlgeschlagen. Bitte Schlüssel prüfen.');
+          setReportButtonVisible(false);
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      });
+    }
+
+    // Report-Button
+    if (btnReport) {
+      btnReport.addEventListener('click', async () => {
+        // Sicherheit: nur bei aktiver Session
+        const ok = await checkLoginStatus();
+        if (!ok) {
+          alert('Bitte zuerst einloggen!');
+          setReportButtonVisible(false);
+          setVisible(loginBox, true);
+          setVisible(boardBox, false);
+          return;
+        }
+        await handleReportToday();
+      });
+    }
+
+    // Optional: Manuell reloaden (falls du einen Button mit id="btnReload" hast)
+    $('#btnReload')?.addEventListener('click', loadOrders);
+
+    // Optional: kleines Auto-Refresh Intervall (z. B. alle 15s)
+    // Deaktiviere, wenn unerwünscht
+    // setInterval(async () => {
+    //   const ok = await checkLoginStatus();
+    //   if (ok) await loadOrders();
+    // }, 15000);
   });
-});
+})();
