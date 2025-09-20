@@ -73,10 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="card">
             <div class="row"><strong>${it.name}</strong><span class="badge">${euro(it.price_cents)}</span></div>
             <div class="row">
-              <input type="number" min="1" value="1" id="qty-${it.id}" style="width:70px">
+              <input type="number" inputmode="numeric" patter="\d*" min="1" max="99" step="1" onwheel="this.blur()" onkeydown="return !(['e','E','+','-','.'].includes(event.key))" value="1" id="qty-${it.id}" style="width:70px">
               <button data-add="${it.id}">Hinzufügen</button>
             </div>
-            <textarea id="note-${it.id}" placeholder="Optional: Hinweis (z. B. ohne Eis)" rows="2" style="width:100%;margin-top:6px"></textarea>
+            <textarea id="note-${it.id}" placeholder="Optional: Hinweis (z.B. ohne Eis)" rows="2" maxlength="140" style="width:100%;margin-top:6px"></textarea>
           </div>`;
       }
       html += `</div>`;

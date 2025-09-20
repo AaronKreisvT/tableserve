@@ -115,16 +115,33 @@ foreach ($menu as $m) {
 // Items säubern/prüfen
 $clean = [];
 foreach ($items as $it) {
-  $iid  = (int)($it['item_id'] ?? 0);
-  $qty  = (int)($it['qty'] ?? 0);
-  $note = isset($it['notes']) ? (string)$it['notes'] : '';
+  // 1) Struktur & Typen prüfen
+  $iid = (int)($it['item_id'] ?? 0);
+  $qty = (int)($it['qty'] ?? 0);
   if ($iid <= 0 || $qty <= 0) continue;
-  if (empty($menuActive[$iid])) continue; // nur aktive Artikel
-  $clean[] = ['item_id'=>$iid, 'qty'=>$qty, 'notes'=>$note];
+  if ($qty > 99) $qty = 99; // Obergrenze
+
+  // Nur aktive Artikel erlauben
+  if (empty($menuActive[$iid])) continue;
+
+  // 2) Hinweis säubern (Unicode- & Sonderzeichen-Whitelist, Länge)
+  $note = (string)($it['notes'] ?? '');
+  $note = preg_replace('/[\r\n\t]+/', ' ', $note);                    // keine Steuerzeichen
+  $note = trim($note);
+  // Lass Buchstaben/Ziffern/Leerraum und ein paar Satzzeichen zu:
+  $note = preg_replace('/[^\p{L}\p{N}\s\.,:;!\?\(\)\-\+\/\'"]+/u', '', $note);
+  if (mb_strlen($note) > 140) $note = mb_substr($note, 0, 140);
+
+  // 3) CSV-Formel-Injection vermeiden (falls später exportiert wird)
+  if ($note !== '' && preg_match('/^[=\-+@]/', $note) === 1) {
+    $note = "'".$note;
+  }
+
+  $clean[] = ['item_id' => $iid, 'qty' => $qty, 'notes' => ($note === '' ? null : $note)];
 }
 if (empty($clean)) {
   http_response_code(400);
-  echo json_encode(['ok'=>false, 'error'=>'no_valid_items']); exit;
+  echo json_encode(['ok'=>false,'error'=>'no_valid_items']); exit;
 }
 
 try {
