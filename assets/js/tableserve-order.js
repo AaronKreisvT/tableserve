@@ -90,10 +90,19 @@ document.addEventListener('DOMContentLoaded', () => {
     menu.querySelectorAll('button[data-add]').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = parseInt(btn.dataset.add,10);
-        const qty = Math.max(1, parseInt(document.getElementById(`qty-${id}`).value || "1", 10));
-        const notes = (document.getElementById(`note-${id}`).value || "").trim();
+
+        const qtyEl = document.getElementById(`qty-${id}`);
+        const noteEl = document.getElementById(`note-${id}`);
+
+        const qty = Math.max(1, parseInt(qtyEl?.value || "1", 10));
+        const notes = (noteEl?.value || "").trim();
+
         const key = id + "|" + (notes || "");
         state.cart[key] = (state.cart[key] || 0) + qty;
+
+        if (qtyEl) qtyEl.value = "1";
+        if (noteEl) noteEl.value ="";
+
         renderCart();
       });
     });
