@@ -19,20 +19,20 @@ Orders are stored in CSV files – no database is required.
 
 ## 📂 Directory Structure
 
-tableserve/
-├── api/ # PHP API endpoints (orders, status, menu, tables, reports)
-├── assets/
-│ ├── css/ # Stylesheets
-│ ├── js/ # Frontend logic (order/staff/admin)
-│ └── icons/ # UI icons
-├── data/ # CSV files (menu.csv, tables.csv, orders.csv, order_items.csv)
-├── partials/ # Header & footer templates
-├── config.php # Keys, paths, constants
-├── staff.html # Staff board (orders, receipts, reports)
-├── admin.html # Admin panel (tables & menu management)
-├── order.html # Guest ordering page (via QR code with ?code=XXXX)
-├── index.html # Landing page for manual table code entry
-└── ...
+tableserve/  
+├── api/ # PHP API endpoints (orders, status, menu, tables, reports)  
+├── assets/  
+│ ├── css/ # Stylesheets  
+│ ├── js/ # Frontend logic (order/staff/admin)  
+│ └── icons/ # UI icons  
+├── data/ # CSV files (menu.csv, tables.csv, orders.csv, order_items.csv)  
+├── partials/ # Header & footer templates  
+├── config.php # Keys, paths, constants  
+├── staff.html # Staff board (orders, receipts, reports)  
+├── admin.html # Admin panel (tables & menu management)  
+├── order.html # Guest ordering page (via QR code with ?code=XXXX)  
+├── index.html # Landing page for manual table code entry  
+└── ...  
 
 
 ---
