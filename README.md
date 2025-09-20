@@ -62,16 +62,16 @@ tableserve/
 ---
 
 ## 🚀 Deployment
-1. Clone repository into your webroot:
+- Clone repository into your webroot:
    ```bash
    git clone https://github.com/AaronKreisvT/tableserve.git /var/www/tableserve
-2. Adjust `config.php`:  
+- Adjust `config.php`:  
   - Define `STAFF_KEY` and `ADMIN_KEY`  
   - Set paths if needed  
 
-3. Ensure `/data` is writable by the web server.  
-4. Configure Apache VirtualHost with PHP-FPM and SSl enabled.  
-5. Access:  
+- Ensure `/data` is writable by the web server.  
+- Configure Apache VirtualHost with PHP-FPM and SSl enabled.  
+- Access:  
   - `order.html?code=XXXX` for guests  
   - `staff.html` for staff board  
   - `admin.html` for admin management  
