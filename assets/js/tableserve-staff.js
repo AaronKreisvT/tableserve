@@ -217,7 +217,7 @@
     const totalStr = centsToEuro(totalCents);
 
     // Druckfenster mit monospace & @page für 80mm
-    const w = window.open('', '_blank', 'width=400,height=700');
+    const w = window.open('', '_blank', 'width=800,height=1000');
     if (!w) { alert('Pop-up Blocker? Bitte für diese Seite erlauben.'); return; }
     w.document.write(`<!doctype html>
 <html>
