@@ -15,7 +15,7 @@ require_once __DIR__ . '/../functions.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
-// Keys müssen aus config.php kommen
+// Login
 if (isset($_GET['login'])) {
   $in  = json_decode(file_get_contents('php://input') ?: '[]', true) ?: [];
   $key = (string)($in['key'] ?? '');
@@ -27,17 +27,19 @@ if (isset($_GET['login'])) {
   http_response_code(401); echo json_encode(['ok'=>false,'error'=>'invalid']); exit;
 }
 
+// Guard
 if (empty($_SESSION['staff_authenticated']) || $_SESSION['staff_authenticated'] !== true) {
   http_response_code(403); echo json_encode(['ok'=>false,'error'=>'forbidden']); exit;
 }
 
-// Konstanten sicherstellen
+// Konstanten
 if (!defined('DATA_DIR'))        define('DATA_DIR',        __DIR__ . '/../data');
 if (!defined('CSV_ORDERS'))      define('CSV_ORDERS',      DATA_DIR . '/orders.csv');
 if (!defined('CSV_ORDER_ITEMS')) define('CSV_ORDER_ITEMS', DATA_DIR . '/order_items.csv');
 if (!defined('CSV_MENU'))        define('CSV_MENU',        DATA_DIR . '/menu.csv');
 if (!defined('CSV_TABLES'))      define('CSV_TABLES',      DATA_DIR . '/tables.csv');
 
+// CSV Fallback
 if (!function_exists('csv_read_assoc')) {
   function csv_read_assoc(string $file): array {
     if (!is_file($file)) return [];
@@ -54,7 +56,7 @@ if (!function_exists('csv_read_assoc')) {
   }
 }
 
-// Daten lesen
+// Daten einlesen
 $orders = csv_read_assoc(CSV_ORDERS);
 $items  = csv_read_assoc(CSV_ORDER_ITEMS);
 $menu   = csv_read_assoc(CSV_MENU);
@@ -77,11 +79,13 @@ foreach ($orders as $o) {
   $arr = [];
   foreach ($items as $it) {
     if ((string)($it['order_id'] ?? '') !== $oid) continue;
-    $def = $menuById[(int)($it['item_id'] ?? 0)] ?? null;
+    $iid = (int)($it['item_id'] ?? 0);
+    $def = $menuById[$iid] ?? null;
     $arr[] = [
-      'qty'   => (int)($it['qty'] ?? 0),
-      'name'  => $def ? ($def['name'] ?? ('#'.($it['item_id'] ?? ''))) : ('#'.($it['item_id'] ?? '')),
-      'notes' => (string)($it['notes'] ?? '')
+      'item_id' => $iid, // <-- WICHTIG: für Preise im Frontend
+      'qty'     => (int)($it['qty'] ?? 0),
+      'name'    => $def ? ($def['name'] ?? ('#'.$iid)) : ('#'.$iid),
+      'notes'   => (string)($it['notes'] ?? '')
     ];
   }
   $out[] = [

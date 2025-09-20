@@ -24,6 +24,7 @@
   // Preise laden (einmalig)
   let priceMap = new Map();   // item_id -> price_cents
   let nameMap  = new Map();   // item_id -> name
+  let nameToId = new Map(); // lower(name) -> item_id
   async function loadMenuPricesOnce() {
     if (priceMap.size > 0) return;
     try {
@@ -35,8 +36,12 @@
       const data = await r.json();
       if (Array.isArray(data.items)) {
         for (const it of data.items) {
-          priceMap.set(Number(it.id), Number(it.price_cents || 0));
-          nameMap.set(Number(it.id), String(it.name || ''));
+          const id = Number(it.id);
+          const nm = String(it.name || '');
+          const pc = Number(it.price_cents || 0);
+          priceMap.set(id, pc);
+          nameMap.set(id, nm);
+          nameToId.set(nm.trim().toLowerCase(), id);
         }
       }
     } catch { /* ignore */ }
@@ -187,16 +192,26 @@
 
     for (const it of items) {
       const qty  = Number(it.qty) || 0;
-      const iid  = Number(it.item_id) || null;
-      const name = (it.name || (iid ? (nameMap.get(iid) || ('#'+iid)) : '')).toString();
-      const price = iid ? (priceMap.get(iid) || 0) : 0;
-      const lineCents = price * qty;
+      let iid  = (it.item_id != null) ? Number(it.item_id) : null;
+      const name = (it.name || '').toString().trim();
+      const note = (it.notes || '').toString().trim();
+      if (!iid && name) {
+        const guess = nameToId.get(name.toLowerCase());
+        if (guess) iid = guess;
+      }
+      const unitPrice = iid ? (priceMap.get(iid) || 0) : 0;
+      const lineCents = unitPrice * qty;
       totalCents += lineCents;
 
       const qtyStr = String(qty).padStart(QTY_PAD, ' ');
-      const nameStr = name.length > NAME_WIDTH ? name.slice(0, NAME_WIDTH-1) + '…' : name.padEnd(NAME_WIDTH, ' ');
+      const nmStr = name.length > NAME_WIDTH ? name.slice(0, NAME_WIDTH-1) + '…' : name.padEnd(NAME_WIDTH, ' ');
       const priceStr = centsToEuro(lineCents).padStart(PRICE_PAD, ' ');
-      lines.push(`${qtyStr}x ${nameStr} ${priceStr}`);
+      lines.push(`${qtyStr}x ${nmStr} ${priceStr}`);
+
+      if (note){
+        const noteTxt = `(Hinweis: ${note})`;
+        lines.push(`	${noteTxt}`);
+      }
     }
 
     const totalStr = centsToEuro(totalCents);
@@ -226,7 +241,6 @@
   <div class="sum">Gesamt: ${escapeHtml(totalStr)}</div>
   <div class="muted" style="margin-top:8px">ID: ${escapeHtml(id)}</div>
   <script>
-    // Auto-drucken & Fenster schließen (optional)
     window.addEventListener('load', () => {
       window.print();
       setTimeout(() => { window.close(); }, 300);
