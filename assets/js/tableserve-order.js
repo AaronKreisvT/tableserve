@@ -45,34 +45,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------- Menü laden ----------
   async function loadMenu(){
-    // 1) JSON-API (optional)
     try {
-      const r = await fetch('/api/menu.php', { headers:{ 'Accept':'application/json' } });
-      if (r.ok) {
-        const data = await r.json();
-        if (Array.isArray(data.items)) { state.items = data.items; renderMenu(); return; }
-      }
-    } catch(e){ /* ignore */ }
-
-    // 2) CSV-Fallback
-    try {
-      const r = await fetch('/data/menu.csv', { cache:'no-cache' });
-      if (!r.ok) throw 0;
-      const text = await r.text();
-      const rows = text.trim().split(/\r?\n/).map(l => l.split(';'));
-      const headers = rows.shift();
-      const idx = Object.fromEntries(headers.map((h,i)=>[h,i]));
-      state.items = rows.map(r => ({
-        id: parseInt(r[idx.id],10),
-        name: r[idx.name],
-        price_cents: parseInt(r[idx.price_cents],10),
-        category: r[idx.category],
-        active: r[idx.active] === '1'
-      })).filter(x=>x.active);
+      const r = await fetch('/api/menu.php', {
+        headers:{ 'Accept':'application/json' },
+        credentials: 'same-origin'
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.json();
+      if (!Array.isArray(data.items)) throw new Error('bad format');
+      state.items = data.items;
       renderMenu();
-    } catch(e){
-      const menu = document.getElementById('menu');
-      if (menu) menu.innerHTML = `<p class="muted">Menü konnte nicht geladen werden.</p>`;
+    } catch (e) {
+      console.error(e);
+      alert('Menü konnte nicht geladen werden.');
     }
   }
 
