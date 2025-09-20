@@ -1,5 +1,5 @@
 // /assets/js/tableserve-staff.js
-// Staff-Seite: Login, Bestell-Board, Status setzen, PDF-Auswertung
+// Staff-Seite: Login, Bestell-Board, Status setzen, PDF-Auswertung, Bon-Druck (80mm)
 
 (() => {
   // ---------- Helpers ----------
@@ -19,6 +19,27 @@
   function setReportButtonVisible(visible) {
     const btn = $('#btnReportToday');
     if (btn) btn.style.display = visible ? 'inline-block' : 'none';
+  }
+
+  // Preise laden (einmalig)
+  let priceMap = new Map();   // item_id -> price_cents
+  let nameMap  = new Map();   // item_id -> name
+  async function loadMenuPricesOnce() {
+    if (priceMap.size > 0) return;
+    try {
+      const r = await fetch('/api/menu.php', {
+        headers: { 'Accept':'application/json' },
+        credentials: 'same-origin'
+      });
+      if (!r.ok) return;
+      const data = await r.json();
+      if (Array.isArray(data.items)) {
+        for (const it of data.items) {
+          priceMap.set(Number(it.id), Number(it.price_cents || 0));
+          nameMap.set(Number(it.id), String(it.name || ''));
+        }
+      }
+    } catch { /* ignore */ }
   }
 
   async function checkLoginStatus() {
@@ -46,6 +67,8 @@
     return true;
   }
 
+  // Orders laden/rendern
+  let lastOrders = []; // zuletzt geladene Orderliste (für Drucken)
   async function loadOrders() {
     const cont = $('#orders');
     if (!cont) return;
@@ -60,9 +83,13 @@
       if (!data.ok) throw new Error('not ok');
 
       const orders = Array.isArray(data.orders) ? data.orders : [];
+      // Älteste zuerst (nach created_at-String)
       orders.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+
+      lastOrders = orders;
       cont.innerHTML = orders.length ? renderOrders(orders) : '<p class="muted">Aktuell keine Bestellungen.</p>';
 
+      // Status-Buttons
       $$('.js-set-status').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           const id = e.currentTarget.dataset.id;
@@ -74,6 +101,17 @@
             console.error(err);
             alert('Konnte Status nicht setzen.');
           }
+        });
+      });
+
+      // Druck-Buttons
+      $$('.js-print-order').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.currentTarget.dataset.id;
+          await loadMenuPricesOnce();
+          const order = lastOrders.find(o => (o.id || '') === id);
+          if (!order) { alert('Bestellung nicht gefunden.'); return; }
+          printOrderTicket(order);
         });
       });
     } catch (err) {
@@ -91,10 +129,11 @@
       }).join('');
       return `
         <div class="card">
-          <div class="row" style="justify-content:space-between">
+          <div class="row" style="justify-content:space-between;align-items:center">
             <div>
               <strong>${escapeHtml(o.table_name || '')}</strong>
               <span class="muted"> • ${escapeHtml(o.created_at || '')}</span>
+              <div class="muted" style="margin-top:2px">ID: ${escapeHtml(o.id || '')}</div>
             </div>
             <span class="badge">${escapeHtml(o.status || '')}</span>
           </div>
@@ -103,6 +142,7 @@
             <button class="js-set-status" data-id="${escapeAttr(o.id)}" data-status="in_prep">In Vorbereitung</button>
             <button class="js-set-status" data-id="${escapeAttr(o.id)}" data-status="served">Serviert</button>
             <button class="js-set-status" data-id="${escapeAttr(o.id)}" data-status="cancelled">Storniert</button>
+            <button class="js-print-order" data-id="${escapeAttr(o.id)}">Drucken</button>
           </div>
         </div>
       `;
@@ -120,6 +160,81 @@
     const j = await r.json();
     if (!j.ok) throw new Error('not ok');
     return true;
+  }
+
+  // ---------- Bon-Druck (80mm, monospace) ----------
+  function centsToEuro(c) {
+    const n = (Number(c) || 0) / 100;
+    return n.toFixed(2).replace('.', ',') + ' €';
+  }
+
+  function printOrderTicket(order) {
+    // Daten
+    const tableName = String(order.table_name || '');
+    const created   = String(order.created_at || '');
+    const id        = String(order.id || '');
+    const items     = Array.isArray(order.items) ? order.items : [];
+
+    // Zeilen bauen: qty × name  ....  lineTotal
+    // Preise aus priceMap holen (fallback 0)
+    let totalCents = 0;
+    const lines = [];
+
+    // Name-Spalte auf ~24 Zeichen begrenzen (für 80mm, 1:1 monospaced)
+    const NAME_WIDTH = 24;
+    const QTY_PAD    = 3;   // " 2×"
+    const PRICE_PAD  = 8;   // "  12,34 €"
+
+    for (const it of items) {
+      const qty  = Number(it.qty) || 0;
+      const iid  = Number(it.item_id) || null;
+      const name = (it.name || (iid ? (nameMap.get(iid) || ('#'+iid)) : '')).toString();
+      const price = iid ? (priceMap.get(iid) || 0) : 0;
+      const lineCents = price * qty;
+      totalCents += lineCents;
+
+      const qtyStr = String(qty).padStart(QTY_PAD, ' ');
+      const nameStr = name.length > NAME_WIDTH ? name.slice(0, NAME_WIDTH-1) + '…' : name.padEnd(NAME_WIDTH, ' ');
+      const priceStr = centsToEuro(lineCents).padStart(PRICE_PAD, ' ');
+      lines.push(`${qtyStr}x ${nameStr} ${priceStr}`);
+    }
+
+    const totalStr = centsToEuro(totalCents);
+
+    // Druckfenster mit monospace & @page für 80mm
+    const w = window.open('', '_blank', 'width=400,height=700');
+    if (!w) { alert('Pop-up Blocker? Bitte für diese Seite erlauben.'); return; }
+    w.document.write(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Bon ${escapeHtml(id)}</title>
+  <style>
+    @page { size: 80mm auto; margin: 5mm; }
+    html,body { margin:0; padding:0; }
+    body { font: 14px/1.35 "Courier New", Courier, monospace; width: 72mm; }
+    h1 { font-size: 16px; margin: 0 0 6px 0; text-align: center; }
+    .muted { opacity: .8; text-align: center; margin-bottom: 8px; }
+    pre { white-space: pre; margin: 8px 0; }
+    .sum { border-top: 1px dashed #000; margin-top: 8px; padding-top: 6px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Bestellung</h1>
+  <div class="muted">${escapeHtml(tableName)} • ${escapeHtml(created)}</div>
+  <pre>${lines.map(escapeHtml).join('\n')}</pre>
+  <div class="sum">Gesamt: ${escapeHtml(totalStr)}</div>
+  <div class="muted" style="margin-top:8px">ID: ${escapeHtml(id)}</div>
+  <script>
+    // Auto-drucken & Fenster schließen (optional)
+    window.addEventListener('load', () => {
+      window.print();
+      setTimeout(() => { window.close(); }, 300);
+    });
+  </script>
+</body>
+</html>`);
+    w.document.close();
   }
 
   // ---------- PDF Auswertung (Heute) ----------
@@ -190,10 +305,11 @@
     // Button erstmal verstecken
     setReportButtonVisible(false);
 
-    // Prüfen ob eingeloggt
+    // Bereits eingeloggt?
     if (await checkLoginStatus()) {
       setReportButtonVisible(true);
-      loadOrders();
+      await loadMenuPricesOnce();
+      await loadOrders();
     }
 
     // Login-Form submit
@@ -206,7 +322,8 @@
           await apiLoginStaff(key);
           if (loginMsg) loginMsg.textContent = 'Login erfolgreich.';
           setReportButtonVisible(true);
-          loadOrders();
+          await loadMenuPricesOnce();
+          await loadOrders();
         } catch (err) {
           console.error(err);
           if (loginMsg) loginMsg.textContent = 'Falscher Schlüssel!';

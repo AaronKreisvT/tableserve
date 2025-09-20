@@ -26,3 +26,14 @@ body {
 
 /* Sticky header baseline height helper */
 header { min-height: 60px; }
+
+/* --- Bondruck (80mm) --- */
+@media print {
+  /* Falls du direkt aus der Seite drucken würdest */
+  body.receipt {
+    width: 72mm;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 14px;
+  }
+  @page { size: 80mm auto; margin: 5mm; }
+}
