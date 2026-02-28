@@ -1,11 +1,50 @@
-/* tableserve.css – nutzt NUR die globalen Theme-Variablen aus styles.css */
+/* ===========================
+   THEME VARIABLES
+=========================== */
+:root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #666666;
+
+  --panel: #ffffff;
+  --border: #e5e5e5;
+  --accent: #0d6efd;
+
+  --radius: 12px;
+}
+
+/* Dark mode – include_tableserve.js toggles html.dark */
+html.dark {
+  --bg: #0f1115;
+  --fg: #e8e8ea;
+  --muted: #a0a3aa;
+
+  --panel: #171922;
+  --border: #2a2d38;
+  --accent: #60a5fa;
+}
+
+/* Smooth transitions after first paint (include.js adds html.theme-anim) */
+html.theme-anim body,
+html.theme-anim body * {
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+/* ===========================
+   BASE
+=========================== */
 * {
   box-sizing: border-box;
 }
+
 html,
 body {
   min-height: 100%;
 }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -19,18 +58,35 @@ body {
     sans-serif;
 }
 
-/* Header/Footer (Partials) */
+/* Links */
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* ===========================
+   HEADER / NAV (partials)
+=========================== */
 header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+
   background: var(--panel);
   border-bottom: 1px solid var(--border);
+  min-height: 60px;
 }
-footer {
-  text-align: center;
-  margin: 3rem 0 2rem;
-  color: var(--muted);
-}
-.nav,
-.foot {
+
+body {
+  padding-top: 60px;
+} /* match header height */
+
+.nav {
   max-width: 1100px;
   margin: 0 auto;
   padding: 12px 16px;
@@ -38,14 +94,23 @@ footer {
   gap: 12px;
   align-items: center;
 }
+
 .brand {
   font-weight: 700;
   color: var(--fg);
   text-decoration: none;
 }
+
 .spacer {
   flex: 1;
 }
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .tabs a {
   color: var(--fg);
   opacity: 0.9;
@@ -53,9 +118,11 @@ footer {
   padding: 6px 10px;
   border-radius: 8px;
 }
+
 .tabs a.active {
   background: var(--border);
 }
+
 .icon-btn {
   border: 1px solid var(--border);
   background: var(--panel);
@@ -65,50 +132,107 @@ footer {
   cursor: pointer;
   transition: transform 0.18s ease;
 }
+
 .icon-btn:active {
   transform: scale(0.96);
 }
 
-/* Layout */
+/* ===========================
+   MOBILE NAV (Burger)
+   expects:
+   - button#menu-toggle (often with class "icon-btn burger")
+   - nav links container #primary-menu (typically class "tabs")
+   - header .nav gets class "open" when menu is open (include.js)
+=========================== */
+.icon-btn.burger {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  header .nav {
+    position: relative;
+  }
+
+  .icon-btn.burger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+  }
+
+  /* dropdown */
+  .tabs {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 16px;
+
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    min-width: 12rem;
+    z-index: 50;
+  }
+
+  header .nav.open .tabs {
+    display: flex;
+  }
+
+  .tabs a {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+}
+
+/* ===========================
+   LAYOUT
+=========================== */
 .container {
   max-width: 1100px;
   margin: 20px auto;
   padding: 0 16px;
 }
+
 .muted {
   color: var(--muted);
 }
-a {
-  color: var(--accent);
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
 
-/* Bestellseite */
 .grid {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
+
 .card {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: var(--panel);
   padding: 12px;
 }
+
+/* Generic row utility (kept, but NOT for footer centering) */
 .row {
   display: flex;
   gap: 8px;
   align-items: center;
   justify-content: space-between;
 }
+
 .badge {
   background: var(--border);
   border-radius: 8px;
   padding: 2px 8px;
 }
+
+/* Forms */
 input,
 textarea,
 button {
@@ -118,16 +242,19 @@ button {
   background: var(--panel);
   color: var(--fg);
 }
+
 button {
   cursor: pointer;
   border-color: transparent;
   background: var(--accent);
   color: #fff;
 }
+
 button[disabled] {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
 ul {
   padding-left: 18px;
 }
@@ -138,18 +265,57 @@ ul {
   border-radius: 999px;
   padding: 2px 8px;
 }
+
 .small {
   font-size: 0.85em;
 }
 
-/* Sticky Header (falls gewünscht) */
-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
+/* ===========================
+   FOOTER (partials)
+=========================== */
+footer {
+  margin: 3rem 0 2rem;
+  color: var(--muted);
 }
-body {
-  padding-top: 60px;
-} /* ggf. an Headerhöhe anpassen */
+
+/* same container concept as header */
+.foot {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* actual footer layout */
+.footer-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+footer a {
+  color: inherit;
+  opacity: 0.9;
+}
+footer a:hover {
+  opacity: 1;
+}
+
+/* ===========================
+   PRINT (Receipt 80mm)
+=========================== */
+@media print {
+  body.receipt {
+    width: 72mm;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 14px;
+  }
+  @page {
+    size: 80mm auto;
+    margin: 5mm;
+  }
+}

@@ -1,36 +1,35 @@
 <!doctype html>
 <html lang="de">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TableServe – Bestellung</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TableServe – Bestellung</title>
 
-  <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" href="/favicon.png?v=7">
-  <link rel="apple-touch-icon" href="/favicon.png?v=7">
-  <meta name="theme-color" content="#111111">
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png?v=7" />
+    <link rel="apple-touch-icon" href="/favicon.png?v=7" />
+    <meta name="theme-color" content="#111111" />
 
-  <link rel="stylesheet" href="/assets/css/styles.css">
-  <link rel="stylesheet" href="/assets/css/tableserve.css">
+    <link rel="stylesheet" href="/assets/css/tableserve.css" />
 
-  <script src="/assets/js/include.js" defer></script>
-  <script src="/assets/js/tableserve-order.js" defer></script>
-</head>
-<body data-page="order">
-  <div data-include="/partials/header-tableserve.html"></div>
+    <script src="/assets/js/include.js" defer></script>
+    <script src="/assets/js/tableserve-order.js" defer></script>
+  </head>
+  <body data-page="order">
+    <div data-include="/partials/header-tableserve.html"></div>
 
-  <main class="container">
-    <h1>Bestellen</h1>
-    <p id="tableInfo" class="muted"></p>
+    <main class="container">
+      <h1>Bestellen</h1>
+      <p id="tableInfo" class="muted"></p>
 
-    <div id="menu"></div>
+      <div id="menu"></div>
 
-    <h3>Warenkorb</h3>
-    <div id="cart"><p class="muted">Noch leer.</p></div>
-    <button id="send" disabled>Bestellung abschicken</button>
-    <p id="msg" class="muted"></p>
-  </main>
+      <h3>Warenkorb</h3>
+      <div id="cart"><p class="muted">Noch leer.</p></div>
+      <button id="send" disabled>Bestellung abschicken</button>
+      <p id="msg" class="muted"></p>
+    </main>
 
-  <div data-include="/partials/footer-tableserve.html"></div>
-</body>
+    <div data-include="/partials/footer-tableserve.html"></div>
+  </body>
 </html>
