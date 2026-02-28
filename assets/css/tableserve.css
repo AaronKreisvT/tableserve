@@ -3,25 +3,25 @@
 =========================== */
 :root {
   --bg: #ffffff;
-  --fg: #111111;
-  --muted: #666666;
+  --fg: #0f172a;
+  --muted: #475569;
 
-  --panel: #ffffff;
-  --border: #e5e5e5;
-  --accent: #0d6efd;
+  --panel: #f8fafc;
+  --border: #e2e8f0;
+  --accent: #3b82f6;
 
   --radius: 16px;
 }
 
 /* Dark mode – include_tableserve.js toggles html.dark */
 html.dark {
-  --bg: #0b1a2b;
-  --fg: #e6edf5;
-  --muted: #aab6c7;
+  --bg: #0b1622;
+  --fg: #e2e8f0;
+  --muted: #94a3b8;
 
-  --panel: #12243a;
-  --border: #1e3654;
-  --accent: #4ea1ff;
+  --panel: #0f1f2e;
+  --border: #1e293b;
+  --accent: #60a5fa;
 }
 
 /* Smooth transitions after first paint (include.js adds html.theme-anim) */
