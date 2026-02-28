@@ -2,15 +2,15 @@
    THEME VARIABLES
 =========================== */
 :root {
-  --bg: #ffffff;
-  --fg: #111111;
-  --muted: #666666;
+  --bg: #0b1a2b;
+  --fg: #e6edf5;
+  --muted: #aab6c7;
 
-  --panel: #ffffff;
-  --border: #e5e5e5;
-  --accent: #0d6efd;
+  --panel: #12243a;
+  --border: #1e3654;
+  --accent: #4ea1ff;
 
-  --radius: 12px;
+  --radius: 16px;
 }
 
 /* Dark mode – include_tableserve.js toggles html.dark */
@@ -215,7 +215,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel);
-  padding: 12px;
+  padding: 20px;
 }
 
 /* Generic row utility (kept, but NOT for footer centering) */
@@ -241,6 +241,10 @@ button {
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--fg);
+}
+
+input {
+  width: 100%;
 }
 
 button {
