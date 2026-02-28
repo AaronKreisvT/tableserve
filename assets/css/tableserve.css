@@ -2,6 +2,19 @@
    THEME VARIABLES
 =========================== */
 :root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #666666;
+
+  --panel: #ffffff;
+  --border: #e5e5e5;
+  --accent: #0d6efd;
+
+  --radius: 16px;
+}
+
+/* Dark mode – include_tableserve.js toggles html.dark */
+html.dark {
   --bg: #0b1a2b;
   --fg: #e6edf5;
   --muted: #aab6c7;
@@ -9,19 +22,6 @@
   --panel: #12243a;
   --border: #1e3654;
   --accent: #4ea1ff;
-
-  --radius: 16px;
-}
-
-/* Dark mode – include_tableserve.js toggles html.dark */
-html.dark {
-  --bg: #0f1115;
-  --fg: #e8e8ea;
-  --muted: #a0a3aa;
-
-  --panel: #171922;
-  --border: #2a2d38;
-  --accent: #60a5fa;
 }
 
 /* Smooth transitions after first paint (include.js adds html.theme-anim) */
