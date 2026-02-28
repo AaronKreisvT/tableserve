@@ -1,12 +1,23 @@
 <header>
   <nav class="nav">
-    <a href="/" class="brand">TableServe</a>
+    <a href="/index.html" class="brand">TableServe</a>
     <div class="spacer"></div>
-    <div class="tabs">
-      <a href="/" data-active="index">Bestellen</a>
+    <div id="primary-menu" class="tabs">
+      <a href="/index.html" data-active="index">Bestellen</a>
       <a href="/staff.html" data-active="staff">Tresen</a>
       <a href="/admin.html" data-active="admin">Admin</a>
     </div>
-    <button id="theme-toggle" class="icon-btn" aria-label="Toggle theme">🌙</button>
+    <button
+      id="menu-toggle"
+      class="icon-btn burger"
+      aria-label="Menu"
+      aria-expanded="false"
+      aria-controls="primary-menu"
+    >
+      ☰
+    </button>
+    <button id="theme-toggle" class="icon-btn" aria-label="Toggle theme">
+      🌙
+    </button>
   </nav>
 </header>

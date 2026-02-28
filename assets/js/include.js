@@ -85,5 +85,31 @@
     wireThemeToggle();
     markActiveTab();
     setYear();
+    setupMobileMenu();
   });
 })();
+
+function setupMobileMenu() {
+  const toggle = document.getElementById("menu-toggle");
+  const nav = document.querySelector("header .nav");
+
+  if (!toggle || !nav) return;
+
+  toggle.addEventListener("click", () => {
+    nav.classList.toggle("open");
+  });
+
+  // Klick außerhalb schließt
+  document.addEventListener("click", (e) => {
+    if (!nav.contains(e.target)) {
+      nav.classList.remove("open");
+    }
+  });
+
+  // ESC schließt
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      nav.classList.remove("open");
+    }
+  });
+}
